@@ -31,10 +31,9 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/staff', require('./routes/staff'));
 
 // Serve frontend for all other routes
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
 });
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🏥 Health-Aid Clinic server running on port ${PORT}`);

@@ -2,22 +2,21 @@
   "name": "health-aid-clinic",
   "version": "1.0.0",
   "description": "Health-Aid Clinic Hospital Management System",
+  "main": "server.js",
+  "type": "commonjs",
   "scripts": {
     "start": "cd backend && node server.js",
-    "dev": "cd backend && npm run dev",
+    "dev": "cd backend && node server.js",
     "install-deps": "cd backend && npm install",
-    "setup": "cd backend && npm install && node -e \"require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/healthaidclinic').then(() => { const bcrypt = require('bcryptjs'); const User = require('./models/User'); User.countDocuments().then(c => { if(c===0) User.create({username:'admin',password:'admin123',fullName:'System Administrator',role:'admin',department:'Administration'}).then(() => { console.log('✅ Admin created: admin/admin123'); process.exit(0); }); else { console.log('ℹ️  Users already exist'); process.exit(0); } }); });\""
+    "setup": "cd backend && npm install && node -e \"require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGODB_URI).then(() => { const bcrypt = require('bcryptjs'); const User = require('./models/User'); User.countDocuments().then(async (c) => { if (c === 0) { await User.create({ username: 'admin', password: 'admin123', fullName: 'System Administrator', role: 'admin', department: 'Administration' }); console.log('Admin created: admin/admin123'); } else { console.log('Users already exist'); } process.exit(0); }); }).catch(err => { console.error('DB Error:', err); process.exit(1); });\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2"
   },
-  "main": "server.js",
-  "devDependencies": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "devDependencies": {}
 }
