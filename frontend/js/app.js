@@ -1,6 +1,6 @@
 // ── API BASE ──
 const API = (() => {
-  const BASE = '/api';
+ const BASE = 'https://health-aid-clinic.onrender.com/api';
 
   const headers = () => {
     const token = localStorage.getItem('token');
