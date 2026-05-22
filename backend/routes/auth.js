@@ -1,46 +1,92 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
-const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET || 'healthaid_secret', { expiresIn: '7d' });
+// Generate JWT token
+const generateToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET || 'healthaid_secret', {
+    expiresIn: '7d'
+  });
 
-// POST /api/auth/login
+
+// ─────────────────────────────
+// LOGIN
+// ─────────────────────────────
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+
     const user = await User.findOne({ username, active: true });
-    if (!user || !(await user.matchPassword(password))) {
+
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    const isMatch = await user.matchPassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
     res.json({
       token: generateToken(user._id),
-      user: { id: user._id, username: user.username, fullName: user.fullName, role: user.role, department: user.department }
+      user: {
+        id: user._id,
+        username: user.username,
+        fullName: user.fullName,
+        role: user.role,
+        department: user.department
+      }
     });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// GET /api/auth/me
+
+// ─────────────────────────────
+// GET CURRENT USER
+// ─────────────────────────────
 router.get('/me', protect, async (req, res) => {
   res.json(req.user);
 });
 
-// POST /api/auth/setup - Create initial admin (only if no users exist)
+
+// ─────────────────────────────
+// SETUP ADMIN (FIXED)
+// ─────────────────────────────
 router.post('/setup', async (req, res) => {
   try {
     const count = await User.countDocuments();
-    if (count > 0) return res.status(400).json({ message: 'Setup already completed' });
+
+    if (count > 0) {
+      return res.status(400).json({
+        message: 'Setup already completed'
+      });
+    }
+
+    // FIX: hash password properly
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+
     const admin = await User.create({
       username: 'admin',
-      password: 'admin123',
+      password: hashedPassword,
       fullName: 'System Administrator',
       role: 'admin',
-      department: 'Administration'
+      department: 'Administration',
+      active: true
     });
-    res.json({ message: 'Admin created. Username: admin, Password: admin123' });
+
+    res.json({
+      message: 'Admin created successfully',
+      username: 'admin',
+      password: 'admin123'
+    });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
