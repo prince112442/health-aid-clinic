@@ -59,7 +59,7 @@ router.get('/me', protect, async (req, res) => {
 // ─────────────────────────────
 // SETUP ADMIN (FIXED)
 // ─────────────────────────────
-router.post('/setup', async (req, res) => {
+router.get('/setup', async (req, res) => {
   try {
     const count = await User.countDocuments();
 
