@@ -185,6 +185,13 @@ function renderTable(patients) {
       <td>
         <button class="btn btn-sm btn-outline" onclick="viewPatient('${p._id}')">👁</button>
         <button class="btn btn-sm btn-secondary" onclick="editPatient('${p._id}')">✏️</button>
+        <div style="display:inline-block;position:relative">
+          <button class="btn btn-sm btn-success" onclick="toggleVitalsMenu(event,'${p._id}','${p.name}')">❤️ Vitals ▾</button>
+          <div id="vmenu-${p._id}" style="display:none;position:absolute;right:0;top:100%;z-index:300;background:#fff;border:1.5px solid var(--brown-pale);border-radius:8px;box-shadow:var(--shadow);min-width:160px;overflow:hidden">
+            <button onclick="openVitals('${p._id}','${p.name}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit" onmouseover="this.style.background='var(--brown-cream)'" onmouseout="this.style.background='none'">➕ Add Vitals</button>
+            <button onclick="viewVitals('${p._id}','${p.name}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit" onmouseover="this.style.background='var(--brown-cream)'" onmouseout="this.style.background='none'">📋 View Vitals History</button>
+          </div>
+        </div>
         <button class="btn btn-sm btn-danger" onclick="deletePatient('${p._id}','${p.name}')">🗑</button>
       </td>
     </tr>`).join('');
@@ -285,8 +292,155 @@ function printRow(l, v) {
   return `<div class="print-row"><span class="label">${l}:</span><span>${v}</span></div>`;
 }
 
+
+let currentVitalsPatientId = null;
+let currentVitalsPatientName = null;
+
+function toggleVitalsMenu(e, id, name) {
+  e.stopPropagation();
+  // Close all other menus
+  document.querySelectorAll('[id^="vmenu-"]').forEach(m => {
+    if (m.id !== 'vmenu-' + id) m.style.display = 'none';
+  });
+  const menu = document.getElementById('vmenu-' + id);
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('[id^="vmenu-"]').forEach(m => m.style.display = 'none');
+});
+
+function openVitals(id, name) {
+  currentVitalsPatientId = id;
+  currentVitalsPatientName = name;
+  document.getElementById('vitals-modal-title').textContent = 'Add Vitals — ' + name;
+  document.getElementById('vitals-form').reset();
+  Modal.open('vitals-modal');
+}
+
+async function saveVitals() {
+  const form = document.getElementById('vitals-form');
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  const data = getFormData(form);
+  data.patientId = currentVitalsPatientId;
+  data.recordedAt = new Date().toISOString();
+  try {
+    await API.post('/vitals', data);
+    Toast.success('Vitals saved for ' + currentVitalsPatientName);
+    Modal.close('vitals-modal');
+  } catch(e) {
+    // Store locally if API not available
+    let stored = JSON.parse(localStorage.getItem('vitals_' + currentVitalsPatientId) || '[]');
+    stored.unshift({ ...data, recordedAt: new Date().toISOString() });
+    localStorage.setItem('vitals_' + currentVitalsPatientId, JSON.stringify(stored));
+    Toast.success('Vitals saved locally for ' + currentVitalsPatientName);
+    Modal.close('vitals-modal');
+  }
+}
+
+async function viewVitals(id, name) {
+  let records = [];
+  try {
+    records = await API.get('/vitals/' + id);
+  } catch(e) {
+    records = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
+  }
+  const local = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
+  records = [...records, ...local];
+
+  if (!records.length) {
+    Toast.warning('No vitals recorded for ' + name);
+    return;
+  }
+  document.getElementById('vitals-modal-title').textContent = 'Vitals History — ' + name;
+  const form = document.getElementById('vitals-form');
+  form.style.display = 'none';
+  // Show table
+  const body = document.querySelector('#vitals-modal .modal-body');
+  body.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Temp (°C)</th><th>BP</th><th>Pulse</th><th>RR</th><th>O₂ Sat%</th><th>Weight</th><th>Glucose</th><th>Notes</th></tr></thead>
+    <tbody>${records.map(r => `<tr>
+      <td>${new Date(r.recordedAt).toLocaleString('en-GB')}</td>
+      <td>${r.temperature || '—'}</td>
+      <td>${r.bloodPressure || '—'}</td>
+      <td>${r.pulseRate || '—'}</td>
+      <td>${r.respiratoryRate || '—'}</td>
+      <td>${r.oxygenSaturation || '—'}</td>
+      <td>${r.weight ? r.weight + ' kg' : '—'}</td>
+      <td>${r.bloodGlucose || '—'}</td>
+      <td>${r.vitalsNotes || '—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>
+  <div style="margin-top:14px;text-align:right">
+    <button class="btn btn-primary btn-sm" onclick="resetVitalsModal('${id}','${name}')">➕ Add New Vitals</button>
+  </div>`;
+  Modal.open('vitals-modal');
+}
+
+function resetVitalsModal(id, name) {
+  const body = document.querySelector('#vitals-modal .modal-body');
+  body.innerHTML = '<form id="vitals-form"><div class="form-grid"><div class="form-group"><label class="form-label">Temperature (°C) <span class="req">*</span></label><input type="number" name="temperature" class="form-control" step="0.1" min="30" max="45" placeholder="e.g. 36.6" required></div><div class="form-group"><label class="form-label">Blood Pressure (mmHg) <span class="req">*</span></label><input type="text" name="bloodPressure" class="form-control" placeholder="e.g. 120/80" required></div><div class="form-group"><label class="form-label">Pulse Rate (bpm) <span class="req">*</span></label><input type="number" name="pulseRate" class="form-control" min="30" max="250" placeholder="e.g. 72" required></div><div class="form-group"><label class="form-label">Respiratory Rate (breaths/min)</label><input type="number" name="respiratoryRate" class="form-control" min="5" max="60" placeholder="e.g. 16"></div><div class="form-group"><label class="form-label">Oxygen Saturation (%)</label><input type="number" name="oxygenSaturation" class="form-control" step="0.1" min="50" max="100" placeholder="e.g. 98"></div><div class="form-group"><label class="form-label">Weight (kg)</label><input type="number" name="weight" class="form-control" step="0.1" min="0" max="500" placeholder="e.g. 70"></div><div class="form-group"><label class="form-label">Height (cm)</label><input type="number" name="height" class="form-control" step="0.1" min="0" max="300" placeholder="e.g. 170"></div><div class="form-group"><label class="form-label">Blood Glucose (mmol/L)</label><input type="number" name="bloodGlucose" class="form-control" step="0.1" min="0" max="50" placeholder="e.g. 5.4"></div><div class="form-group col-span-2"><label class="form-label">Notes</label><textarea name="vitalsNotes" class="form-control" rows="3" placeholder="Additional observations..."></textarea></div></div></form>';
+  openVitals(id, name);
+}
+
 document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; loadPatients(1); });
 loadPatients();
 </script>
+
+<!-- Vitals Modal -->
+<div class="modal-overlay" id="vitals-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="vitals-modal-title">Add Patient Vitals</span>
+      <button class="modal-close" onclick="Modal.close('vitals-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="vitals-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Temperature (°C) <span class="req">*</span></label>
+            <input type="number" name="temperature" class="form-control" step="0.1" min="30" max="45" placeholder="e.g. 36.6" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Pressure (mmHg) <span class="req">*</span></label>
+            <input type="text" name="bloodPressure" class="form-control" placeholder="e.g. 120/80" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pulse Rate (bpm) <span class="req">*</span></label>
+            <input type="number" name="pulseRate" class="form-control" min="30" max="250" placeholder="e.g. 72" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Respiratory Rate (breaths/min)</label>
+            <input type="number" name="respiratoryRate" class="form-control" min="5" max="60" placeholder="e.g. 16">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Oxygen Saturation (%)</label>
+            <input type="number" name="oxygenSaturation" class="form-control" step="0.1" min="50" max="100" placeholder="e.g. 98">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" name="weight" class="form-control" step="0.1" min="0" max="500" placeholder="e.g. 70">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Height (cm)</label>
+            <input type="number" name="height" class="form-control" step="0.1" min="0" max="300" placeholder="e.g. 170">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Glucose (mmol/L)</label>
+            <input type="number" name="bloodGlucose" class="form-control" step="0.1" min="0" max="50" placeholder="e.g. 5.4">
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Notes</label>
+            <textarea name="vitalsNotes" class="form-control" rows="3" placeholder="Additional observations..."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Modal.close('vitals-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVitals()">💾 Save Vitals</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
