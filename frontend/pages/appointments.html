@@ -187,7 +187,7 @@ async function saveAppt() {
 }
 
 async function deleteAppt(id) {
-  if (!confirm('Cancel and delete this appointment?')) return;
+  if (!window.confirm('Cancel and delete this appointment?')) return;
   try { await API.delete(`/appointments/${id}`); Toast.success('Deleted'); loadAppts(); }
   catch(e) { Toast.error(e.message); }
 }

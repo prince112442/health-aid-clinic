@@ -158,10 +158,6 @@ function fillForm(formEl, data) {
   });
 }
 
-function confirm(msg) {
-  return window.confirm(msg);
-}
-
 // ── RUN ON LOAD ──
 document.addEventListener('DOMContentLoaded', () => {
   Auth.requireAuth();

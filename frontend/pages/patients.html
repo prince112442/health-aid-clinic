@@ -238,7 +238,7 @@ async function savePatient() {
 }
 
 async function deletePatient(id, name) {
-  if (!confirm(`Delete patient "${name}"? This cannot be undone.`)) return;
+  if (!window.confirm(`Delete patient "${name}"? This cannot be undone.`)) return;
   try { await API.delete(`/patients/${id}`); Toast.success('Patient deleted'); loadPatients(currentPage); }
   catch(e) { Toast.error(e.message); }
 }

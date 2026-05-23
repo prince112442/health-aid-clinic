@@ -214,7 +214,7 @@ async function saveDrug() {
 }
 
 async function deleteDrug(id, name) {
-  if (!confirm(`Delete drug "${name}"?`)) return;
+  if (!window.confirm(`Delete drug "${name}"?`)) return;
   try { await API.delete(`/pharmacy/${id}`); Toast.success('Deleted'); loadDrugs(); }
   catch(e) { Toast.error(e.message); }
 }

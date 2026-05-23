@@ -182,7 +182,7 @@ async function saveStaff() {
 async function deleteStaff(id, name) {
   const me = Auth.getUser();
   if (me.id === id) { Toast.error("You can't delete yourself"); return; }
-  if (!confirm(`Delete staff member "${name}"?`)) return;
+  if (!window.confirm(`Delete staff member "${name}"?`)) return;
   try { await API.delete(`/staff/${id}`); Toast.success('Deleted'); loadStaff(); }
   catch(e) { Toast.error(e.message); }
 }
