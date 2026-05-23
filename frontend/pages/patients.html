@@ -193,6 +193,7 @@ function renderTable(patients) {
           </div>
         </div>
         <button class="btn btn-sm btn-danger" onclick="deletePatient('${p._id}','${p.name}')">🗑</button>
+        <button class="btn btn-sm" style="background:var(--brown-pale);color:var(--text-dark)" onclick="openClinical('${p._id}','${p.name}')">📋 Clinical</button>
       </td>
     </tr>`).join('');
 }
@@ -444,3 +445,185 @@ loadPatients();
 
 </body>
 </html>
+
+<!-- Clinical Notes Modal -->
+<div class="modal-overlay" id="clinical-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="clinical-modal-title">Clinical Notes</span>
+      <button class="modal-close" onclick="Modal.close('clinical-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Tabs -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;border-bottom:2px solid var(--brown-pale);padding-bottom:10px">
+        <button class="clinical-tab active" onclick="switchTab('complaints')" id="tab-complaints">🗣 Complaints</button>
+        <button class="clinical-tab" onclick="switchTab('lab')" id="tab-lab">🔬 Lab Investigations</button>
+        <button class="clinical-tab" onclick="switchTab('diagnosis')" id="tab-diagnosis">🩺 Diagnosis</button>
+        <button class="clinical-tab" onclick="switchTab('treatment')" id="tab-treatment">💊 Treatment</button>
+        <button class="clinical-tab" onclick="switchTab('detention')" id="tab-detention">🛏 Detention</button>
+      </div>
+      <style>
+        .clinical-tab {
+          padding: 7px 14px; border-radius: 6px; border: 1.5px solid var(--brown-pale,#d4b896);
+          background: #fff; cursor: pointer; font-size: 13px; font-family: inherit;
+          color: var(--text-dark); transition: background .15s;
+        }
+        .clinical-tab.active {
+          background: var(--brown-mid, #8B6343); color: #fff; border-color: var(--brown-mid, #8B6343);
+        }
+        .clinical-panel { display: none; }
+        .clinical-panel.active { display: block; }
+      </style>
+
+      <!-- 1. Complaints -->
+      <div class="clinical-panel active" id="panel-complaints">
+        <label class="form-label" style="font-weight:600">Patient Complaints</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Describe the patient's presenting complaints and symptoms.</p>
+        <textarea id="input-complaints" class="form-control" rows="6" placeholder="e.g. Patient presents with headache for 3 days, fever, and general body weakness..."></textarea>
+      </div>
+
+      <!-- 2. Lab Investigations -->
+      <div class="clinical-panel" id="panel-lab">
+        <label class="form-label" style="font-weight:600">Laboratory Investigations</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Record lab tests requested and their results.</p>
+        <textarea id="input-lab" class="form-control" rows="6" placeholder="e.g. FBC: WBC 11.2, RBC 4.5, HGB 13.2&#10;Malaria RDT: Positive&#10;Urinalysis: Normal..."></textarea>
+      </div>
+
+      <!-- 3. Diagnosis -->
+      <div class="clinical-panel" id="panel-diagnosis">
+        <label class="form-label" style="font-weight:600">Diagnosis</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Enter the clinical diagnosis or differential diagnoses.</p>
+        <textarea id="input-diagnosis" class="form-control" rows="6" placeholder="e.g. 1. Malaria (confirmed)&#10;2. Mild dehydration&#10;DDx: Typhoid fever..."></textarea>
+      </div>
+
+      <!-- 4. Treatment / Prescription -->
+      <div class="clinical-panel" id="panel-treatment">
+        <label class="form-label" style="font-weight:600">Treatment / Prescription</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">List prescribed medications, dosages, and treatment instructions.</p>
+        <textarea id="input-treatment" class="form-control" rows="6" placeholder="e.g. 1. Artemether-Lumefantrine 80/480mg — 1 tab BD x 3 days&#10;2. Paracetamol 500mg — 1 tab TDS PRN&#10;3. ORS — 1 sachet TDS x 2 days&#10;Review in 3 days or if symptoms worsen..."></textarea>
+      </div>
+
+      <!-- 5. Detention -->
+      <div class="clinical-panel" id="panel-detention">
+        <label class="form-label" style="font-weight:600">Detention / Admission Notes</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Record admission details, ward notes, and progress observations.</p>
+        <textarea id="input-detention" class="form-control" rows="6" placeholder="e.g. Patient admitted to ward A, bed 3.&#10;Date admitted: 23/05/2026&#10;Condition on admission: Stable&#10;Progress notes: Patient responding to treatment, fever subsiding..."></textarea>
+      </div>
+
+      <!-- Saved entries list -->
+      <div id="clinical-history" style="margin-top:20px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Modal.close('clinical-modal')">Close</button>
+      <button class="btn btn-secondary" onclick="printClinical()">🖨️ Print</button>
+      <button class="btn btn-primary" onclick="saveClinical()">💾 Save Notes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentClinicalId = null;
+let currentClinicalName = null;
+let currentClinicalTab = 'complaints';
+
+function switchTab(tab) {
+  currentClinicalTab = tab;
+  document.querySelectorAll('.clinical-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.clinical-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function openClinical(id, name) {
+  currentClinicalId = id;
+  currentClinicalName = name;
+  document.getElementById('clinical-modal-title').textContent = '📋 Clinical Notes — ' + name;
+  // Clear inputs
+  ['complaints','lab','diagnosis','treatment','detention'].forEach(k => {
+    document.getElementById('input-' + k).value = '';
+  });
+  switchTab('complaints');
+  loadClinicalHistory(id);
+  Modal.open('clinical-modal');
+}
+
+function saveClinical() {
+  const tabs = ['complaints','lab','diagnosis','treatment','detention'];
+  const hasData = tabs.some(k => document.getElementById('input-' + k).value.trim());
+  if (!hasData) { Toast.warning('Please enter at least one field before saving.'); return; }
+
+  const entry = {
+    id: Date.now(),
+    savedAt: new Date().toISOString(),
+    complaints: document.getElementById('input-complaints').value.trim(),
+    lab: document.getElementById('input-lab').value.trim(),
+    diagnosis: document.getElementById('input-diagnosis').value.trim(),
+    treatment: document.getElementById('input-treatment').value.trim(),
+    detention: document.getElementById('input-detention').value.trim(),
+  };
+
+  // Try API first, fall back to localStorage
+  API.post('/patients/' + currentClinicalId + '/clinical', entry).catch(() => {});
+
+  let stored = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+  stored.unshift(entry);
+  localStorage.setItem('clinical_' + currentClinicalId, JSON.stringify(stored));
+
+  Toast.success('Clinical notes saved for ' + currentClinicalName);
+  ['complaints','lab','diagnosis','treatment','detention'].forEach(k => {
+    document.getElementById('input-' + k).value = '';
+  });
+  loadClinicalHistory(currentClinicalId);
+}
+
+function loadClinicalHistory(id) {
+  const records = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
+  const el = document.getElementById('clinical-history');
+  if (!records.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:10px">
+      Previous Entries (${records.length})
+    </div>
+    ${records.map((r, i) => `
+      <div style="border:1.5px solid var(--brown-pale);border-radius:8px;padding:14px;margin-bottom:10px;background:#fdfaf7">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong style="font-size:13px">Entry — ${new Date(r.savedAt).toLocaleString('en-GB')}</strong>
+          <button class="btn btn-sm btn-danger" onclick="deleteClinicalEntry('${id}',${i})">🗑</button>
+        </div>
+        ${r.complaints ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Complaints</div><div style="font-size:13px;white-space:pre-wrap">${r.complaints}</div></div>` : ''}
+        ${r.lab ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Lab Investigations</div><div style="font-size:13px;white-space:pre-wrap">${r.lab}</div></div>` : ''}
+        ${r.diagnosis ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Diagnosis</div><div style="font-size:13px;white-space:pre-wrap">${r.diagnosis}</div></div>` : ''}
+        ${r.treatment ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Treatment / Prescription</div><div style="font-size:13px;white-space:pre-wrap">${r.treatment}</div></div>` : ''}
+        ${r.detention ? `<div><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Detention / Admission</div><div style="font-size:13px;white-space:pre-wrap">${r.detention}</div></div>` : ''}
+      </div>`).join('')}`;
+}
+
+function deleteClinicalEntry(id, index) {
+  if (!confirm('Delete this clinical entry?')) return;
+  let stored = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
+  stored.splice(index, 1);
+  localStorage.setItem('clinical_' + id, JSON.stringify(stored));
+  loadClinicalHistory(id);
+  Toast.success('Entry deleted');
+}
+
+function printClinical() {
+  const records = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+  const latest = records[0];
+  if (!latest) { Toast.warning('No saved notes to print.'); return; }
+  const section = (label, val) => val ? `<div style="margin-bottom:14px"><strong>${label}:</strong><p style="margin-top:4px;white-space:pre-wrap">${val}</p></div>` : '';
+  document.getElementById('print-area').innerHTML = `
+    <div class="print-header">
+      <h1>🏥 HEALTH-AID CLINIC</h1>
+      <p>Clinical Notes — ${currentClinicalName}</p>
+      <p style="font-size:12px">Printed: ${new Date().toLocaleString('en-GB')}</p>
+    </div>
+    ${section('Patient Complaints', latest.complaints)}
+    ${section('Lab Investigations', latest.lab)}
+    ${section('Diagnosis', latest.diagnosis)}
+    ${section('Treatment / Prescription', latest.treatment)}
+    ${section('Detention / Admission Notes', latest.detention)}`;
+  window.print();
+}
+</script>

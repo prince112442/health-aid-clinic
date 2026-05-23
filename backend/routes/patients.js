@@ -60,3 +60,25 @@ router.delete('/:id', protect, async (req, res) => {
 });
 
 module.exports = router;
+
+// POST /api/patients/:id/clinical - Save clinical notes (optional, falls back to localStorage on frontend)
+router.post('/:id/clinical', protect, async (req, res) => {
+  try {
+    const patient = await Patient.findByIdAndUpdate(
+      req.params.id,
+      { $push: { clinicalNotes: { ...req.body, savedAt: new Date(), savedBy: req.user._id } } },
+      { new: true }
+    );
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    res.status(201).json({ message: 'Clinical notes saved' });
+  } catch (err) { res.status(400).json({ message: err.message }); }
+});
+
+// GET /api/patients/:id/clinical - Get clinical notes history
+router.get('/:id/clinical', protect, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id).select('clinicalNotes');
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    res.json(patient.clinicalNotes || []);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
