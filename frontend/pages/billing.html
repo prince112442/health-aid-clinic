@@ -40,7 +40,7 @@
     <div class="page-content">
       <div class="toolbar">
         <div class="search-wrap">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon"></span>
           <input type="text" class="form-control" id="search-input" placeholder="Search patient or bill ID...">
         </div>
         <select class="form-control" id="status-filter" style="width:auto">
@@ -138,7 +138,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('bill-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveBill()">💾 Generate Bill</button>
+      <button class="btn btn-primary" onclick="saveBill()">Generate Bill</button>
     </div>
   </div>
 </div>
@@ -153,7 +153,7 @@
     <div class="modal-body" id="invoice-body"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('invoice-modal')">Close</button>
-      <button class="btn btn-primary" onclick="window.print()">🖨️ Print Invoice</button>
+      <button class="btn btn-primary" onclick="window.print()">Print Invoice</button>
     </div>
   </div>
 </div>
@@ -225,7 +225,7 @@ function togglePaid(val) {
 }
 
 function openAdd() {
-  editId = null; billRows = [];
+  editId = null;billRows = [];
   document.getElementById('modal-title').textContent = 'Generate Bill';
   document.getElementById('bill-form').reset();
   document.getElementById('bill-items').innerHTML = '';
@@ -264,7 +264,7 @@ async function loadBills() {
     const bills = await API.get(`/billing?search=${encodeURIComponent(search)}&status=${status}`);
     const tbody = document.getElementById('bills-table');
     if (!bills.length) {
-      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🧾</div><h3>No bills found</h3></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon"></div><h3>No bills found</h3></div></td></tr>';
       return;
     }
     tbody.innerHTML = bills.map(b => {
@@ -280,7 +280,7 @@ async function loadBills() {
         <td>${Fmt.badge(b.paymentStatus, statusBadge)}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="viewInvoice('${b._id}')">👁 Invoice</button>
-          <button class="btn btn-sm btn-success" onclick="markPaid('${b._id}')">✅ Mark Paid</button>
+          <button class="btn btn-sm btn-success" onclick="markPaid('${b._id}')">Mark Paid</button>
         </td>
       </tr>`;
     }).join('');
@@ -293,7 +293,7 @@ async function viewInvoice(id) {
     document.getElementById('invoice-body').innerHTML = `
       <div class="invoice-box">
         <div class="inv-header">
-          <div class="inv-brand"><h2>🏥 HEALTH-AID CLINIC</h2><p style="color:var(--text-light);font-size:12px">Hospital Management System</p></div>
+          <div class="inv-brand"><h2>HEALTH-AID CLINIC</h2><p style="color:var(--text-light);font-size:12px">Hospital Management System</p></div>
           <div class="inv-meta">
             <div style="font-size:22px;font-weight:700;color:var(--brown-mid)">INVOICE</div>
             <div><strong>${b.billId}</strong></div>

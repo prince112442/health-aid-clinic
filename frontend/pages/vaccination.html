@@ -23,7 +23,7 @@
     <div class="page-content">
       <div class="toolbar">
         <div class="search-wrap">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon"></span>
           <input type="text" class="form-control" id="search-input" placeholder="Search patient name or ID...">
         </div>
         <select class="form-control" id="vaccine-filter" style="width:auto">
@@ -84,6 +84,10 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="tel" name="phoneNumber" class="form-control" placeholder="e.g. +233 24 000 0000">
+          </div>
+          <div class="form-group">
             <label class="form-label">Location <span class="req">*</span></label>
             <input type="text" name="location" class="form-control" placeholder="Town / Facility" required>
           </div>
@@ -135,7 +139,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('vac-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveVac()">💾 Save Record</button>
+      <button class="btn btn-primary" onclick="saveVac()">Save Record</button>
     </div>
   </div>
 </div>

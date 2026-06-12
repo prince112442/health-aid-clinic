@@ -22,7 +22,7 @@
     <div class="page-content">
       <!-- My Attendance Card -->
       <div class="card" style="margin-bottom:22px">
-        <div class="card-header"><span class="card-title">🕐 My Attendance Today</span></div>
+        <div class="card-header"><span class="card-title"> My Attendance Today</span></div>
         <div class="card-body">
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <div id="my-status" style="flex:1;min-width:200px">
@@ -42,8 +42,8 @@
               <div style="font-size:16px;font-weight:600" id="today-hours">—</div>
             </div>
             <div style="display:flex;gap:10px">
-              <button class="btn btn-success" id="btn-checkin" onclick="checkIn()">✅ Check In</button>
-              <button class="btn btn-danger" id="btn-checkout" onclick="checkOut()" disabled>🚪 Check Out</button>
+              <button class="btn btn-success" id="btn-checkin" onclick="checkIn()"> Check In</button>
+              <button class="btn btn-danger" id="btn-checkout" onclick="checkOut()" disabled>Check Out</button>
             </div>
           </div>
         </div>
@@ -58,8 +58,8 @@
           <option value="10">October</option><option value="11">November</option><option value="12">December</option>
         </select>
         <select class="form-control" id="year-filter" style="width:auto"></select>
-        <button class="btn btn-secondary" onclick="loadAttendance()">🔍 Load</button>
-        <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-secondary" onclick="loadAttendance()"> Load</button>
+        <button class="btn btn-outline" onclick="window.print()">Print</button>
         <button class="btn btn-primary" onclick="Modal.open('add-modal')" data-admin-only>+ Add Record</button>
       </div>
 
@@ -123,7 +123,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('add-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAttendance()">💾 Save</button>
+      <button class="btn btn-primary" onclick="saveAttendance()"> Save</button>
     </div>
   </div>
 </div>
@@ -192,7 +192,7 @@ async function loadAttendance() {
     document.getElementById('att-summary').textContent = `${records.length} records | Present: ${present} | Absent: ${absent}`;
     const tbody = document.getElementById('att-table');
     if (!records.length) {
-      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="icon">🕐</div><h3>No records for this period</h3></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="icon"></div><h3>No records for this period</h3></div></td></tr>';
       return;
     }
     tbody.innerHTML = records.map(r => `

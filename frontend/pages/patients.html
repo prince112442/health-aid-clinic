@@ -34,7 +34,7 @@
     <div class="page-content">
       <div class="toolbar">
         <div class="search-wrap">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon"></span>
           <input type="text" class="form-control" id="search-input" placeholder="Search by name, ID, contact...">
         </div>
       </div>
@@ -126,7 +126,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('patient-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="savePatient()">💾 Save Patient</button>
+      <button class="btn btn-primary" onclick="savePatient()">Save Patient</button>
     </div>
   </div>
 </div>
@@ -275,7 +275,7 @@ function printPatient() {
   const p = viewData;
   document.getElementById('print-area').innerHTML = `
     <div class="print-header">
-      <h1>🏥 HEALTH-AID CLINIC</h1>
+      <h1> HEALTH-AID CLINIC</h1>
       <p>Patient Information Record</p>
       <p style="font-size:12px">Printed: ${new Date().toLocaleString('en-GB')}</p>
     </div>
@@ -438,7 +438,7 @@ loadPatients();
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('vitals-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveVitals()">💾 Save Vitals</button>
+      <button class="btn btn-primary" onclick="saveVitals()"> Save Vitals</button>
     </div>
   </div>
 </div>
@@ -515,8 +515,8 @@ loadPatients();
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('clinical-modal')">Close</button>
-      <button class="btn btn-secondary" onclick="printClinical()">🖨️ Print</button>
-      <button class="btn btn-primary" onclick="saveClinical()">💾 Save Notes</button>
+      <button class="btn btn-secondary" onclick="printClinical()"> Print</button>
+      <button class="btn btn-primary" onclick="saveClinical()"> Save Notes</button>
     </div>
   </div>
 </div>
@@ -537,7 +537,7 @@ function switchTab(tab) {
 function openClinical(id, name) {
   currentClinicalId = id;
   currentClinicalName = name;
-  document.getElementById('clinical-modal-title').textContent = '📋 Clinical Notes — ' + name;
+  document.getElementById('clinical-modal-title').textContent = 'Clinical Notes — ' + name;
   // Clear inputs
   ['complaints','lab','diagnosis','treatment','detention'].forEach(k => {
     document.getElementById('input-' + k).value = '';
