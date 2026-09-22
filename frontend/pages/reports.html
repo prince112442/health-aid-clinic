@@ -22,7 +22,7 @@
   <div class="main-content">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
         <div><div class="topbar-title">Reports</div></div>
       </div>
       <div class="topbar-right">
@@ -33,7 +33,7 @@
     <div class="page-content">
       <!-- Print header (only visible on print) -->
       <div class="report-header" id="print-report-header">
-        <h1> HEALTH-AID CLINIC</h1>
+        <h1><i class="fa-solid fa-hospital"></i> HEALTH-AID CLINIC</h1>
         <h2 id="print-report-title">Monthly Report</h2>
         <p id="print-report-period"></p>
         <p style="font-size:12px">Generated: <span id="print-date"></span></p>
@@ -47,8 +47,9 @@
           <option value="10">October</option><option value="11">November</option><option value="12">December</option>
         </select>
         <select class="form-control" id="year-sel" style="width:auto"></select>
-        <button class="btn btn-primary" onclick="loadReport()">enerate Report</button>
-        <button class="btn btn-secondary" onclick="printReport()"> Print / Export PDF</button>
+        <button class="btn btn-primary" onclick="loadReport()"><i class="fa-solid fa-arrows-rotate"></i> Generate Report</button>
+        <button class="btn btn-secondary" onclick="printReport()"><i class="fa-solid fa-print"></i> Print / Export PDF</button>
+        <button class="btn btn-secondary" onclick="downloadReportCSV()"><i class="fa-solid fa-file-arrow-down"></i> Download Patient Attendance (CSV)</button>
       </div>
 
       <div id="report-content">
@@ -77,6 +78,8 @@ for (let y = now.getFullYear(); y >= 2023; y--) {
 document.getElementById('month-sel').value = now.getMonth() + 1;
 
 const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+let currentReportData = null;
+let currentReportPeriod = '';
 
 async function loadReport() {
   const month = document.getElementById('month-sel').value;
@@ -97,21 +100,38 @@ function renderReport(data, month, year) {
   document.getElementById('print-date').textContent = new Date().toLocaleString('en-GB');
 
   const { patients, billing, attendance, appointments } = data;
+  currentReportData = data;
+  currentReportPeriod = period;
 
   document.getElementById('report-content').innerHTML = `
     <!-- Summary Cards -->
     <div class="stats-grid" style="margin-bottom:24px">
-      <div class="stat-card"><div class="stat-icon brown"></div><div class="stat-info"><div class="label">New Patients</div><div class="value">${patients.count}</div></div></div>
-      <div class="stat-card"><div class="stat-icon green"></div><div class="stat-info"><div class="label">Revenue</div><div class="value" style="font-size:18px">${Fmt.currency(billing.revenue)}</div></div></div>
-      <div class="stat-card"><div class="stat-icon orange"></div><div class="stat-info"><div class="label">Pending</div><div class="value" style="font-size:18px">${Fmt.currency(billing.pending)}</div></div></div>
-      <div class="stat-card"><div class="stat-icon blue"></div><div class="stat-info"><div class="label">Appointments</div><div class="value">${appointments.count}</div></div></div>
-      <div class="stat-card"><div class="stat-icon green"></div><div class="stat-info"><div class="label">Completed Appts</div><div class="value">${appointments.completed}</div></div></div>
-      <div class="stat-card"><div class="stat-icon brown"></div><div class="stat-info"><div class="label">Attendance Days</div><div class="value">${attendance.present}</div></div></div>
+      <div class="stat-card"><div class="stat-icon brown"><i class="fa-solid fa-user-plus"></i></div><div class="stat-info"><div class="label">New Patients</div><div class="value">${patients.count}</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fa-solid fa-sack-dollar"></i></div><div class="stat-info"><div class="label">Revenue</div><div class="value" style="font-size:18px">${Fmt.currency(billing.revenue)}</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-info"><div class="label">Pending</div><div class="value" style="font-size:18px">${Fmt.currency(billing.pending)}</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i class="fa-solid fa-calendar-days"></i></div><div class="stat-info"><div class="label">Appointments</div><div class="value">${appointments.count}</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fa-solid fa-calendar-check"></i></div><div class="stat-info"><div class="label">Completed Appts</div><div class="value">${appointments.completed}</div></div></div>
+      <div class="stat-card"><div class="stat-icon brown"><i class="fa-solid fa-clock"></i></div><div class="stat-info"><div class="label">Attendance Days</div><div class="value">${attendance.present}</div></div></div>
+    </div>
+
+    <!-- Patient Attendance Table -->
+    <div class="card report-section">
+      <div class="card-header"><span class="card-title"><i class="fa-solid fa-clipboard-list"></i> Patient Attendance — ${period}</span><span style="font-size:12px;color:var(--text-light)">${appointments.list ? appointments.list.length : 0} visit(s)</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Doctor</th><th>Department</th><th>Reason</th><th>Status</th></tr></thead>
+          <tbody>
+            ${(appointments.list && appointments.list.length) ? appointments.list.map(a => `
+              <tr><td>${Fmt.date(a.date)}</td><td>${a.time || '—'}</td><td><strong>${a.patientName}</strong></td><td>${a.doctor}</td><td>${a.department || '—'}</td><td>${a.reason || '—'}</td><td>${Fmt.badge(a.status, statusBadge)}</td></tr>`).join('')
+            : '<tr><td colspan="7"><div class="empty-state"><p>No patient visits recorded this month</p></div></td></tr>'}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Patients Table -->
     <div class="card report-section">
-      <div class="card-header"><span class="card-title">👥 New Patients — ${period}</span></div>
+      <div class="card-header"><span class="card-title"><i class="fa-solid fa-users"></i> New Patients — ${period}</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Patient ID</th><th>Name</th><th>Age</th><th>Sex</th><th>Contact</th><th>Registered</th></tr></thead>
@@ -161,6 +181,46 @@ function printReport() {
     return;
   }
   window.print();
+}
+
+function csvEscape(val) {
+  const s = (val === null || val === undefined) ? '' : String(val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function downloadReportCSV() {
+  if (!currentReportData) {
+    Toast.warning('Please generate a report first');
+    return;
+  }
+  const { appointments, patients } = currentReportData;
+  const rows = [];
+  rows.push(['Patient Attendance Report', currentReportPeriod]);
+  rows.push([]);
+  rows.push(['Date', 'Time', 'Patient Name', 'Doctor', 'Department', 'Reason', 'Status']);
+  (appointments.list || []).forEach(a => {
+    rows.push([Fmt.date(a.date), a.time || '', a.patientName, a.doctor, a.department || '', a.reason || '', a.status]);
+  });
+  rows.push([]);
+  rows.push(['New Patients Registered', currentReportPeriod]);
+  rows.push([]);
+  rows.push(['Patient ID', 'Name', 'Age', 'Sex', 'Contact', 'Blood Group', 'Registered']);
+  (patients.list || []).forEach(p => {
+    rows.push([p.patientId, p.name, p.age, p.sex, p.contact, p.bloodGroup || '', Fmt.date(p.createdAt)]);
+  });
+
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `patient-attendance-${currentReportPeriod.replace(/\s+/g, '-')}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  Toast.success('Patient attendance CSV downloaded');
 }
 </script>
 </body>

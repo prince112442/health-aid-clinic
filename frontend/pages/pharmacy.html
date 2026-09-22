@@ -11,7 +11,7 @@
   <div class="main-content">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
         <div><div class="topbar-title">Pharmacy</div></div>
       </div>
       <div class="topbar-right">
@@ -30,7 +30,7 @@
 
       <div class="toolbar">
         <div class="search-wrap">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
           <input type="text" class="form-control" id="search-input" placeholder="Search drug name or category...">
         </div>
         <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer">
@@ -174,8 +174,8 @@ async function loadDrugs() {
         <td>${status}</td>
         <td>
           <button class="btn btn-sm btn-success" onclick="openRestock('${d._id}','${d.name}')">+</button>
-          <button class="btn btn-sm btn-secondary" onclick="editDrug('${d._id}')">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteDrug('${d._id}','${d.name}')">🗑</button>
+          <button class="btn btn-sm btn-secondary" onclick="editDrug('${d._id}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteDrug('${d._id}','${d.name}')"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>`;
     }).join('');

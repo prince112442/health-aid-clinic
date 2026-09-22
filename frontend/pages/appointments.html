@@ -11,7 +11,7 @@
   <div class="main-content">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
         <div><div class="topbar-title">Appointments</div></div>
       </div>
       <div class="topbar-right">
@@ -131,7 +131,7 @@ async function loadAppts() {
     document.getElementById('appt-count').textContent = `${appts.length} records`;
     const tbody = document.getElementById('appts-table');
     if (!appts.length) {
-      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">📅</div><h3>No appointments found</h3></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon"><i class="fa-solid fa-calendar-days"></i></div><h3>No appointments found</h3></div></td></tr>';
       return;
     }
     tbody.innerHTML = appts.map(a => `
@@ -145,8 +145,8 @@ async function loadAppts() {
         <td>${a.reason || '—'}</td>
         <td>${Fmt.badge(a.status, statusBadge)}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="editAppt('${a._id}')">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteAppt('${a._id}')">🗑</button>
+          <button class="btn btn-sm btn-secondary" onclick="editAppt('${a._id}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteAppt('${a._id}')"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>`).join('');
   } catch(e) { Toast.error('Failed to load appointments'); }

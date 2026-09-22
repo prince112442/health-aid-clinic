@@ -28,7 +28,7 @@
   <div class="main-content">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
         <div><div class="topbar-title">Billing</div></div>
       </div>
       <div class="topbar-right">
@@ -279,7 +279,7 @@ async function loadBills() {
         <td>${b.paymentMethod || '—'}</td>
         <td>${Fmt.badge(b.paymentStatus, statusBadge)}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="viewInvoice('${b._id}')">👁 Invoice</button>
+          <button class="btn btn-sm btn-secondary" onclick="viewInvoice('${b._id}')"><i class="fa-solid fa-eye"></i> Invoice</button>
           <button class="btn btn-sm btn-success" onclick="markPaid('${b._id}')">Mark Paid</button>
         </td>
       </tr>`;

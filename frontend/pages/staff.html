@@ -11,7 +11,7 @@
   <div class="main-content">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
         <div><div class="topbar-title">Staff Management</div></div>
       </div>
       <div class="topbar-right">
@@ -114,7 +114,7 @@ async function loadStaff() {
     document.getElementById('staff-count').textContent = `${staff.length} staff`;
     const tbody = document.getElementById('staff-table');
     if (!staff.length) {
-      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">👥</div><h3>No staff found</h3></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon"><i class="fa-solid fa-users"></i></div><h3>No staff found</h3></div></td></tr>';
       return;
     }
     tbody.innerHTML = staff.map(s => `
@@ -134,8 +134,8 @@ async function loadStaff() {
         <td>${s.phone || '—'}</td>
         <td><span class="badge ${s.active ? 'badge-success' : 'badge-danger'}">${s.active ? 'Active' : 'Inactive'}</span></td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="editStaff('${s._id}')">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteStaff('${s._id}','${s.fullName}')">🗑</button>
+          <button class="btn btn-sm btn-secondary" onclick="editStaff('${s._id}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteStaff('${s._id}','${s.fullName}')"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>`).join('');
   } catch(e) { Toast.error('Failed to load staff'); }

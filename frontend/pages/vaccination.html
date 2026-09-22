@@ -11,7 +11,7 @@
   <div class="main-content">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
         <div><div class="topbar-title">Vaccination Program</div></div>
       </div>
       <div class="topbar-right">
@@ -162,7 +162,7 @@ async function loadVaccinations() {
     document.getElementById('vac-count').textContent = `${records.length} records`;
     const tbody = document.getElementById('vac-table');
     if (!records.length) {
-      tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon">💉</div><h3>No vaccination records found</h3></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon"><i class="fa-solid fa-syringe"></i></div><h3>No vaccination records found</h3></div></td></tr>';
       return;
     }
     tbody.innerHTML = records.map(r => `
@@ -178,8 +178,8 @@ async function loadVaccinations() {
         <td>${Fmt.date(r.dateAdministered)}</td>
         <td>${r.testResults || '—'}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="editVac('${r._id}')">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteVac('${r._id}')">🗑</button>
+          <button class="btn btn-sm btn-secondary" onclick="editVac('${r._id}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteVac('${r._id}')"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>`).join('');
   } catch(e) { Toast.error('Failed to load vaccinations'); }

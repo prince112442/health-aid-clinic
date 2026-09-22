@@ -13,8 +13,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -29,12 +29,12 @@ app.use('/api/staff', require('./routes/staff'));
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ message: '🏥 Health-Aid Clinic API is running' });
+  res.json({ message: 'Health-Aid Clinic API is running' });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🏥 Health-Aid Clinic server running on port ${PORT}`);
+  console.log(`Health-Aid Clinic server running on port ${PORT}`);
 });
 
 module.exports = app;

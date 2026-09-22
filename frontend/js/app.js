@@ -46,7 +46,12 @@ const Toast = {
     this.init();
     const t = document.createElement('div');
     t.className = `toast ${type}`;
-    const icons = { success: '✅', error: '❌', warning: '⚠️', default: 'ℹ️' };
+    const icons = {
+      success: '<i class="fa-solid fa-circle-check"></i>',
+      error: '<i class="fa-solid fa-circle-xmark"></i>',
+      warning: '<i class="fa-solid fa-triangle-exclamation"></i>',
+      default: '<i class="fa-solid fa-circle-info"></i>'
+    };
     t.innerHTML = `<span>${icons[type] || icons.default}</span><span>${message}</span>`;
     this.container.appendChild(t);
     setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, duration);
