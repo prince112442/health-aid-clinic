@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patients — Health-Aid Clinic</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .print-area { display: none; }
+    @media print {
+      .print-area { display: block; padding: 30px; }
+      .print-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 16px; margin-bottom: 20px; }
+      .print-header h1 { font-size: 22px; }
+      .print-row { display: flex; gap: 20px; margin-bottom: 10px; }
+      .print-row .label { font-weight: 600; min-width: 160px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <div><div class="topbar-title">Patient Records</div></div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="topbar-date"></div>
+        <button class="btn btn-primary" onclick="openAddPatient()">+ Add Patient</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon"></span>
+          <input type="text" class="form-control" id="search-input" placeholder="Search by name, ID, contact...">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">All Patients</span>
+          <span id="patient-count" style="font-size:13px;color:var(--text-light)"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Name</th><th>Age</th><th>Sex</th><th>Contact</th><th>Blood Group</th><th>Registered</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="patients-table"></tbody>
+          </table>
+        </div>
+        <div style="padding:16px 22px">
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="patient-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Add Patient</span>
+      <button class="modal-close" onclick="Modal.close('patient-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="patient-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="req">*</span></label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Age <span class="req">*</span></label>
+            <input type="number" name="age" class="form-control" min="0" max="150" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sex <span class="req">*</span></label>
+            <select name="sex" class="form-control" required>
+              <option value="">Select</option>
+              <option>Male</option><option>Female</option><option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact <span class="req">*</span></label>
+            <input type="text" name="contact" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Group</label>
+            <select name="bloodGroup" class="form-control">
+              <option value="">Unknown</option>
+              <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+            </select>
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Address</label>
+            <input type="text" name="address" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Contact</label>
+            <input type="text" name="emergencyContact" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Phone</label>
+            <input type="text" name="emergencyPhone" class="form-control">
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Allergies</label>
+            <input type="text" name="allergies" class="form-control" placeholder="e.g. Penicillin, Peanuts">
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Medical History</label>
+            <textarea name="medicalHistory" class="form-control" rows="3" placeholder="Previous conditions, surgeries, chronic illnesses..."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Modal.close('patient-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePatient()">Save Patient</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Modal -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">Patient Details</span>
+      <button class="modal-close" onclick="Modal.close('view-modal')">×</button>
+    </div>
+    <div class="modal-body" id="view-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Modal.close('view-modal')">Close</button>
+      <button class="btn btn-secondary" onclick="printPatient()">🖨️ Print</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print Area -->
+<div class="print-area" id="print-area"></div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/app.js"></script>
+<script>
+renderSidebar('patients');
+
+let currentPage = 1, totalPages = 1, editId = null, viewData = null;
+
+async function loadPatients(page = 1) {
+  const search = document.getElementById('search-input').value;
+  try {
+    const data = await API.get(`/patients?page=${page}&limit=15&search=${encodeURIComponent(search)}`);
+    currentPage = data.page; totalPages = data.pages;
+    document.getElementById('patient-count').textContent = `${data.total} total`;
+    renderTable(data.patients);
+    renderPagination();
+  } catch(e) { Toast.error('Failed to load patients'); }
+}
+
+function renderTable(patients) {
+  const tbody = document.getElementById('patients-table');
+  if (!patients.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">🧑‍⚕️</div><h3>No patients found</h3></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = patients.map(p => `
+    <tr>
+      <td><code style="background:var(--brown-cream);padding:2px 6px;border-radius:4px">${p.patientId}</code></td>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.age}</td>
+      <td>${p.sex}</td>
+      <td>${p.contact}</td>
+      <td>${p.bloodGroup || '—'}</td>
+      <td>${Fmt.date(p.createdAt)}</td>
+      <td>
+        <button class="btn btn-sm btn-outline" onclick="viewPatient('${p._id}')">👁</button>
+        <button class="btn btn-sm btn-secondary" onclick="editPatient('${p._id}')">✏️</button>
+        <div style="display:inline-block;position:relative">
+          <button class="btn btn-sm btn-success" onclick="toggleVitalsMenu(event,'${p._id}','${p.name}')">❤️ Vitals ▾</button>
+          <div id="vmenu-${p._id}" style="display:none;position:absolute;right:0;top:100%;z-index:300;background:#fff;border:1.5px solid var(--brown-pale);border-radius:8px;box-shadow:var(--shadow);min-width:160px;overflow:hidden">
+            <button onclick="openVitals('${p._id}','${p.name}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit" onmouseover="this.style.background='var(--brown-cream)'" onmouseout="this.style.background='none'">➕ Add Vitals</button>
+            <button onclick="viewVitals('${p._id}','${p.name}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit" onmouseover="this.style.background='var(--brown-cream)'" onmouseout="this.style.background='none'">📋 View Vitals History</button>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="deletePatient('${p._id}','${p.name}')">🗑</button>
+        <button class="btn btn-sm" style="background:var(--brown-pale);color:var(--text-dark)" onclick="openClinical('${p._id}','${p.name}')">📋 Clinical</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderPagination() {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  let html = `<button ${currentPage===1?'disabled':''} onclick="loadPatients(${currentPage-1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="${i===currentPage?'active':''}" onclick="loadPatients(${i})">${i}</button>`;
+  }
+  html += `<button ${currentPage===totalPages?'disabled':''} onclick="loadPatients(${currentPage+1})">›</button>`;
+  el.innerHTML = html;
+}
+
+function openAddPatient() {
+  editId = null;
+  document.getElementById('modal-title').textContent = 'Add Patient';
+  document.getElementById('patient-form').reset();
+  Modal.open('patient-modal');
+}
+
+async function editPatient(id) {
+  try {
+    const p = await API.get(`/patients/${id}`);
+    editId = id;
+    document.getElementById('modal-title').textContent = 'Edit Patient';
+    fillForm(document.getElementById('patient-form'), p);
+    Modal.open('patient-modal');
+  } catch(e) { Toast.error('Failed to load patient'); }
+}
+
+async function savePatient() {
+  const form = document.getElementById('patient-form');
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  const data = getFormData(form);
+  try {
+    if (editId) { await API.put(`/patients/${editId}`, data); Toast.success('Patient updated'); }
+    else { await API.post('/patients', data); Toast.success('Patient added'); }
+    Modal.close('patient-modal');
+    loadPatients(currentPage);
+  } catch(e) { Toast.error(e.message); }
+}
+
+async function deletePatient(id, name) {
+  if (!window.confirm(`Delete patient "${name}"? This cannot be undone.`)) return;
+  try { await API.delete(`/patients/${id}`); Toast.success('Patient deleted'); loadPatients(currentPage); }
+  catch(e) { Toast.error(e.message); }
+}
+
+async function viewPatient(id) {
+  try {
+    const p = await API.get(`/patients/${id}`);
+    viewData = p;
+    document.getElementById('view-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        ${field('Patient ID', p.patientId)} ${field('Registered', Fmt.date(p.createdAt))}
+        ${field('Full Name', p.name)} ${field('Age', p.age + ' years')}
+        ${field('Sex', p.sex)} ${field('Blood Group', p.bloodGroup || '—')}
+        ${field('Contact', p.contact)} ${field('Email', p.email || '—')}
+        ${field('Address', p.address || '—', true)}
+        ${field('Emergency Contact', p.emergencyContact || '—')} ${field('Emergency Phone', p.emergencyPhone || '—')}
+        ${field('Allergies', p.allergies || 'None', true)}
+        ${field('Medical History', p.medicalHistory || 'None', true)}
+      </div>`;
+    Modal.open('view-modal');
+  } catch(e) { Toast.error('Failed to load patient'); }
+}
+
+function field(label, value, full = false) {
+  return `<div${full?' style="grid-column:span 2"':''}>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:4px">${label}</div>
+    <div style="font-weight:500;color:var(--text-dark)">${value}</div>
+  </div>`;
+}
+
+function printPatient() {
+  if (!viewData) return;
+  const p = viewData;
+  document.getElementById('print-area').innerHTML = `
+    <div class="print-header">
+      <h1> HEALTH-AID CLINIC</h1>
+      <p>Patient Information Record</p>
+      <p style="font-size:12px">Printed: ${new Date().toLocaleString('en-GB')}</p>
+    </div>
+    ${printRow('Patient ID', p.patientId)}${printRow('Full Name', p.name)}
+    ${printRow('Age', p.age + ' years')}${printRow('Sex', p.sex)}
+    ${printRow('Blood Group', p.bloodGroup || '—')}${printRow('Contact', p.contact)}
+    ${printRow('Email', p.email || '—')}${printRow('Address', p.address || '—')}
+    ${printRow('Emergency Contact', p.emergencyContact || '—')}${printRow('Emergency Phone', p.emergencyPhone || '—')}
+    ${printRow('Allergies', p.allergies || 'None')}
+    <div style="margin-top:16px"><strong>Medical History:</strong><p style="margin-top:6px">${p.medicalHistory || 'None'}</p></div>`;
+  window.print();
+}
+
+function printRow(l, v) {
+  return `<div class="print-row"><span class="label">${l}:</span><span>${v}</span></div>`;
+}
+
+
+let currentVitalsPatientId = null;
+let currentVitalsPatientName = null;
+
+function toggleVitalsMenu(e, id, name) {
+  e.stopPropagation();
+  // Close all other menus
+  document.querySelectorAll('[id^="vmenu-"]').forEach(m => {
+    if (m.id !== 'vmenu-' + id) m.style.display = 'none';
+  });
+  const menu = document.getElementById('vmenu-' + id);
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('[id^="vmenu-"]').forEach(m => m.style.display = 'none');
+});
+
+function openVitals(id, name) {
+  currentVitalsPatientId = id;
+  currentVitalsPatientName = name;
+  document.getElementById('vitals-modal-title').textContent = 'Add Vitals — ' + name;
+  document.getElementById('vitals-form').reset();
+  Modal.open('vitals-modal');
+}
+
+async function saveVitals() {
+  const form = document.getElementById('vitals-form');
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  const data = getFormData(form);
+  data.patientId = currentVitalsPatientId;
+  data.recordedAt = new Date().toISOString();
+  try {
+    await API.post('/vitals', data);
+    Toast.success('Vitals saved for ' + currentVitalsPatientName);
+    Modal.close('vitals-modal');
+  } catch(e) {
+    // Store locally if API not available
+    let stored = JSON.parse(localStorage.getItem('vitals_' + currentVitalsPatientId) || '[]');
+    stored.unshift({ ...data, recordedAt: new Date().toISOString() });
+    localStorage.setItem('vitals_' + currentVitalsPatientId, JSON.stringify(stored));
+    Toast.success('Vitals saved locally for ' + currentVitalsPatientName);
+    Modal.close('vitals-modal');
+  }
+}
+
+async function viewVitals(id, name) {
+  let records = [];
+  try {
+    records = await API.get('/vitals/' + id);
+  } catch(e) {
+    records = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
+  }
+  const local = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
+  records = [...records, ...local];
+
+  if (!records.length) {
+    Toast.warning('No vitals recorded for ' + name);
+    return;
+  }
+  document.getElementById('vitals-modal-title').textContent = 'Vitals History — ' + name;
+  const form = document.getElementById('vitals-form');
+  form.style.display = 'none';
+  // Show table
+  const body = document.querySelector('#vitals-modal .modal-body');
+  body.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Temp (°C)</th><th>BP</th><th>Pulse</th><th>RR</th><th>O₂ Sat%</th><th>Weight</th><th>Glucose</th><th>Notes</th></tr></thead>
+    <tbody>${records.map(r => `<tr>
+      <td>${new Date(r.recordedAt).toLocaleString('en-GB')}</td>
+      <td>${r.temperature || '—'}</td>
+      <td>${r.bloodPressure || '—'}</td>
+      <td>${r.pulseRate || '—'}</td>
+      <td>${r.respiratoryRate || '—'}</td>
+      <td>${r.oxygenSaturation || '—'}</td>
+      <td>${r.weight ? r.weight + ' kg' : '—'}</td>
+      <td>${r.bloodGlucose || '—'}</td>
+      <td>${r.vitalsNotes || '—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>
+  <div style="margin-top:14px;text-align:right">
+    <button class="btn btn-primary btn-sm" onclick="resetVitalsModal('${id}','${name}')">➕ Add New Vitals</button>
+  </div>`;
+  Modal.open('vitals-modal');
+}
+
+function resetVitalsModal(id, name) {
+  const body = document.querySelector('#vitals-modal .modal-body');
+  body.innerHTML = '<form id="vitals-form"><div class="form-grid"><div class="form-group"><label class="form-label">Temperature (°C) <span class="req">*</span></label><input type="number" name="temperature" class="form-control" step="0.1" min="30" max="45" placeholder="e.g. 36.6" required></div><div class="form-group"><label class="form-label">Blood Pressure (mmHg) <span class="req">*</span></label><input type="text" name="bloodPressure" class="form-control" placeholder="e.g. 120/80" required></div><div class="form-group"><label class="form-label">Pulse Rate (bpm) <span class="req">*</span></label><input type="number" name="pulseRate" class="form-control" min="30" max="250" placeholder="e.g. 72" required></div><div class="form-group"><label class="form-label">Respiratory Rate (breaths/min)</label><input type="number" name="respiratoryRate" class="form-control" min="5" max="60" placeholder="e.g. 16"></div><div class="form-group"><label class="form-label">Oxygen Saturation (%)</label><input type="number" name="oxygenSaturation" class="form-control" step="0.1" min="50" max="100" placeholder="e.g. 98"></div><div class="form-group"><label class="form-label">Weight (kg)</label><input type="number" name="weight" class="form-control" step="0.1" min="0" max="500" placeholder="e.g. 70"></div><div class="form-group"><label class="form-label">Height (cm)</label><input type="number" name="height" class="form-control" step="0.1" min="0" max="300" placeholder="e.g. 170"></div><div class="form-group"><label class="form-label">Blood Glucose (mmol/L)</label><input type="number" name="bloodGlucose" class="form-control" step="0.1" min="0" max="50" placeholder="e.g. 5.4"></div><div class="form-group col-span-2"><label class="form-label">Notes</label><textarea name="vitalsNotes" class="form-control" rows="3" placeholder="Additional observations..."></textarea></div></div></form>';
+  openVitals(id, name);
+}
+
+document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; loadPatients(1); });
+loadPatients();
+</script>
+
+<!-- Vitals Modal -->
+<div class="modal-overlay" id="vitals-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="vitals-modal-title">Add Patient Vitals</span>
+      <button class="modal-close" onclick="Modal.close('vitals-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="vitals-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Temperature (°C) <span class="req">*</span></label>
+            <input type="number" name="temperature" class="form-control" step="0.1" min="30" max="45" placeholder="e.g. 36.6" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Pressure (mmHg) <span class="req">*</span></label>
+            <input type="text" name="bloodPressure" class="form-control" placeholder="e.g. 120/80" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pulse Rate (bpm) <span class="req">*</span></label>
+            <input type="number" name="pulseRate" class="form-control" min="30" max="250" placeholder="e.g. 72" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Respiratory Rate (breaths/min)</label>
+            <input type="number" name="respiratoryRate" class="form-control" min="5" max="60" placeholder="e.g. 16">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Oxygen Saturation (%)</label>
+            <input type="number" name="oxygenSaturation" class="form-control" step="0.1" min="50" max="100" placeholder="e.g. 98">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" name="weight" class="form-control" step="0.1" min="0" max="500" placeholder="e.g. 70">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Height (cm)</label>
+            <input type="number" name="height" class="form-control" step="0.1" min="0" max="300" placeholder="e.g. 170">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Glucose (mmol/L)</label>
+            <input type="number" name="bloodGlucose" class="form-control" step="0.1" min="0" max="50" placeholder="e.g. 5.4">
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label">Notes</label>
+            <textarea name="vitalsNotes" class="form-control" rows="3" placeholder="Additional observations..."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Modal.close('vitals-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVitals()"> Save Vitals</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+<!-- Clinical Notes Modal -->
+<div class="modal-overlay" id="clinical-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="clinical-modal-title">Clinical Notes</span>
+      <button class="modal-close" onclick="Modal.close('clinical-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Tabs -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;border-bottom:2px solid var(--brown-pale);padding-bottom:10px">
+        <button class="clinical-tab active" onclick="switchTab('complaints')" id="tab-complaints">🗣 Complaints</button>
+        <button class="clinical-tab" onclick="switchTab('lab')" id="tab-lab">🔬 Lab Investigations</button>
+        <button class="clinical-tab" onclick="switchTab('diagnosis')" id="tab-diagnosis">🩺 Diagnosis</button>
+        <button class="clinical-tab" onclick="switchTab('treatment')" id="tab-treatment">💊 Treatment</button>
+        <button class="clinical-tab" onclick="switchTab('detention')" id="tab-detention">🛏 Detention</button>
+      </div>
+      <style>
+        .clinical-tab {
+          padding: 7px 14px; border-radius: 6px; border: 1.5px solid var(--brown-pale,#d4b896);
+          background: #fff; cursor: pointer; font-size: 13px; font-family: inherit;
+          color: var(--text-dark); transition: background .15s;
+        }
+        .clinical-tab.active {
+          background: var(--brown-mid, #8B6343); color: #fff; border-color: var(--brown-mid, #8B6343);
+        }
+        .clinical-panel { display: none; }
+        .clinical-panel.active { display: block; }
+      </style>
+
+      <!-- 1. Complaints -->
+      <div class="clinical-panel active" id="panel-complaints">
+        <label class="form-label" style="font-weight:600">Patient Complaints</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Describe the patient's presenting complaints and symptoms.</p>
+        <textarea id="input-complaints" class="form-control" rows="6" placeholder="e.g. Patient presents with headache for 3 days, fever, and general body weakness..."></textarea>
+      </div>
+
+      <!-- 2. Lab Investigations -->
+      <div class="clinical-panel" id="panel-lab">
+        <label class="form-label" style="font-weight:600">Laboratory Investigations</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Record lab tests requested and their results.</p>
+        <textarea id="input-lab" class="form-control" rows="6" placeholder="e.g. FBC: WBC 11.2, RBC 4.5, HGB 13.2&#10;Malaria RDT: Positive&#10;Urinalysis: Normal..."></textarea>
+      </div>
+
+      <!-- 3. Diagnosis -->
+      <div class="clinical-panel" id="panel-diagnosis">
+        <label class="form-label" style="font-weight:600">Diagnosis</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Enter the clinical diagnosis or differential diagnoses.</p>
+        <textarea id="input-diagnosis" class="form-control" rows="6" placeholder="e.g. 1. Malaria (confirmed)&#10;2. Mild dehydration&#10;DDx: Typhoid fever..."></textarea>
+      </div>
+
+      <!-- 4. Treatment / Prescription -->
+      <div class="clinical-panel" id="panel-treatment">
+        <label class="form-label" style="font-weight:600">Treatment / Prescription</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">List prescribed medications, dosages, and treatment instructions.</p>
+        <textarea id="input-treatment" class="form-control" rows="6" placeholder="e.g. 1. Artemether-Lumefantrine 80/480mg — 1 tab BD x 3 days&#10;2. Paracetamol 500mg — 1 tab TDS PRN&#10;3. ORS — 1 sachet TDS x 2 days&#10;Review in 3 days or if symptoms worsen..."></textarea>
+      </div>
+
+      <!-- 5. Detention -->
+      <div class="clinical-panel" id="panel-detention">
+        <label class="form-label" style="font-weight:600">Detention / Admission Notes</label>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px">Record admission details, ward notes, and progress observations.</p>
+        <textarea id="input-detention" class="form-control" rows="6" placeholder="e.g. Patient admitted to ward A, bed 3.&#10;Date admitted: 23/05/2026&#10;Condition on admission: Stable&#10;Progress notes: Patient responding to treatment, fever subsiding..."></textarea>
+      </div>
+
+      <!-- Saved entries list -->
+      <div id="clinical-history" style="margin-top:20px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="Modal.close('clinical-modal')">Close</button>
+      <button class="btn btn-secondary" onclick="printClinical()"> Print</button>
+      <button class="btn btn-primary" onclick="saveClinical()"> Save Notes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentClinicalId = null;
+let currentClinicalName = null;
+let currentClinicalTab = 'complaints';
+
+function switchTab(tab) {
+  currentClinicalTab = tab;
+  document.querySelectorAll('.clinical-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.clinical-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function openClinical(id, name) {
+  currentClinicalId = id;
+  currentClinicalName = name;
+  document.getElementById('clinical-modal-title').textContent = 'Clinical Notes — ' + name;
+  // Clear inputs
+  ['complaints','lab','diagnosis','treatment','detention'].forEach(k => {
+    document.getElementById('input-' + k).value = '';
+  });
+  switchTab('complaints');
+  loadClinicalHistory(id);
+  Modal.open('clinical-modal');
+}
+
+function saveClinical() {
+  const tabs = ['complaints','lab','diagnosis','treatment','detention'];
+  const hasData = tabs.some(k => document.getElementById('input-' + k).value.trim());
+  if (!hasData) { Toast.warning('Please enter at least one field before saving.'); return; }
+
+  const entry = {
+    id: Date.now(),
+    savedAt: new Date().toISOString(),
+    complaints: document.getElementById('input-complaints').value.trim(),
+    lab: document.getElementById('input-lab').value.trim(),
+    diagnosis: document.getElementById('input-diagnosis').value.trim(),
+    treatment: document.getElementById('input-treatment').value.trim(),
+    detention: document.getElementById('input-detention').value.trim(),
+  };
+
+  // Try API first, fall back to localStorage
+  API.post('/patients/' + currentClinicalId + '/clinical', entry).catch(() => {});
+
+  let stored = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+  stored.unshift(entry);
+  localStorage.setItem('clinical_' + currentClinicalId, JSON.stringify(stored));
+
+  Toast.success('Clinical notes saved for ' + currentClinicalName);
+  ['complaints','lab','diagnosis','treatment','detention'].forEach(k => {
+    document.getElementById('input-' + k).value = '';
+  });
+  loadClinicalHistory(currentClinicalId);
+}
+
+function loadClinicalHistory(id) {
+  const records = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
+  const el = document.getElementById('clinical-history');
+  if (!records.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:10px">
+      Previous Entries (${records.length})
+    </div>
+    ${records.map((r, i) => `
+      <div style="border:1.5px solid var(--brown-pale);border-radius:8px;padding:14px;margin-bottom:10px;background:#fdfaf7">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong style="font-size:13px">Entry — ${new Date(r.savedAt).toLocaleString('en-GB')}</strong>
+          <button class="btn btn-sm btn-danger" onclick="deleteClinicalEntry('${id}',${i})">🗑</button>
+        </div>
+        ${r.complaints ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Complaints</div><div style="font-size:13px;white-space:pre-wrap">${r.complaints}</div></div>` : ''}
+        ${r.lab ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Lab Investigations</div><div style="font-size:13px;white-space:pre-wrap">${r.lab}</div></div>` : ''}
+        ${r.diagnosis ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Diagnosis</div><div style="font-size:13px;white-space:pre-wrap">${r.diagnosis}</div></div>` : ''}
+        ${r.treatment ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Treatment / Prescription</div><div style="font-size:13px;white-space:pre-wrap">${r.treatment}</div></div>` : ''}
+        ${r.detention ? `<div><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Detention / Admission</div><div style="font-size:13px;white-space:pre-wrap">${r.detention}</div></div>` : ''}
+      </div>`).join('')}`;
+}
+
+function deleteClinicalEntry(id, index) {
+  if (!confirm('Delete this clinical entry?')) return;
+  let stored = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
+  stored.splice(index, 1);
+  localStorage.setItem('clinical_' + id, JSON.stringify(stored));
+  loadClinicalHistory(id);
+  Toast.success('Entry deleted');
+}
+
+function printClinical() {
+  const records = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+  const latest = records[0];
+  if (!latest) { Toast.warning('No saved notes to print.'); return; }
+  const section = (label, val) => val ? `<div style="margin-bottom:14px"><strong>${label}:</strong><p style="margin-top:4px;white-space:pre-wrap">${val}</p></div>` : '';
+  document.getElementById('print-area').innerHTML = `
+    <div class="print-header">
+      <h1>🏥 HEALTH-AID CLINIC</h1>
+      <p>Clinical Notes — ${currentClinicalName}</p>
+      <p style="font-size:12px">Printed: ${new Date().toLocaleString('en-GB')}</p>
+    </div>
+    ${section('Patient Complaints', latest.complaints)}
+    ${section('Lab Investigations', latest.lab)}
+    ${section('Diagnosis', latest.diagnosis)}
+    ${section('Treatment / Prescription', latest.treatment)}
+    ${section('Detention / Admission Notes', latest.detention)}`;
+  window.print();
+}
+</script>
