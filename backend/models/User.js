@@ -12,6 +12,23 @@ const userSchema = new mongoose.Schema({
   active: { type: Boolean, default: true }
 }, { timestamps: true });
 
+// Automatically hash the password whenever it's set or changed
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Also hash on findByIdAndUpdate / findOneAndUpdate calls that include a password
+userSchema.pre('findOneAndUpdate', async function(next) {
+  const update = this.getUpdate();
+  if (update && update.password) {
+    update.password = await bcrypt.hash(update.password, 10);
+    this.setUpdate(update);
+  }
+  next();
+});
+
 // password compare
 userSchema.methods.matchPassword = async function(entered) {
   return bcrypt.compare(entered, this.password);
