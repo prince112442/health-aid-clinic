@@ -19,7 +19,8 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const user = await User.findOne({ username, active: true });
+    // Trim whitespace (phone keyboards/autofill often add a trailing space)
+    const user = await User.findOne({ username: String(username || '').trim(), active: true });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -69,12 +70,11 @@ router.get('/setup', async (req, res) => {
       });
     }
 
-    // FIX: hash password properly
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-
+    // NOTE: the User model already hashes the password on save,
+    // so pass the plain password here (hashing twice breaks login).
     const admin = await User.create({
       username: 'admin',
-      password: hashedPassword,
+      password: 'admin123',
       fullName: 'System Administrator',
       role: 'admin',
       department: 'Administration',

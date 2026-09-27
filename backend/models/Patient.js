@@ -13,6 +13,16 @@ const patientSchema = new mongoose.Schema({
   allergies: { type: String, default: '' },
   emergencyContact: { type: String, default: '' },
   emergencyPhone: { type: String, default: '' },
+  clinicalNotes: [{
+    id: { type: Number },
+    complaints: { type: String, default: '' },
+    lab: { type: String, default: '' },
+    diagnosis: { type: String, default: '' },
+    treatment: { type: String, default: '' },
+    detention: { type: String, default: '' },
+    savedAt: { type: Date, default: Date.now },
+    savedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
   registeredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   active: { type: Boolean, default: true }
 }, { timestamps: true });

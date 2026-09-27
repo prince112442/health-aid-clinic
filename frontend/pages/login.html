@@ -52,7 +52,10 @@
   <script>
     // Auto-run setup on first load
     const API_BASE = 'https://health-aid-clinic.onrender.com/api';
-    fetch(`${API_BASE}/auth/setup`, { method: 'POST', headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+    // NOTE: the backend defines this as a GET route (see routes/auth.js),
+    // so it must be called with GET — calling it with POST silently 404s
+    // and the first-run admin account never gets created.
+    fetch(`${API_BASE}/auth/setup`, { method: 'GET' }).catch(() => {});
 
     // Redirect if already logged in
     if (localStorage.getItem('token')) window.location.href = '/pages/dashboard.html';

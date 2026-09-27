@@ -601,7 +601,7 @@ function openClinical(id, name) {
   Modal.open('clinical-modal');
 }
 
-function saveClinical() {
+async function saveClinical() {
   const tabs = ['complaints','lab','diagnosis','treatment','detention'];
   const hasData = tabs.some(k => document.getElementById('input-' + k).value.trim());
   if (!hasData) { Toast.warning('Please enter at least one field before saving.'); return; }
@@ -616,14 +616,19 @@ function saveClinical() {
     detention: document.getElementById('input-detention').value.trim(),
   };
 
-  // Try API first, fall back to localStorage
-  API.post('/patients/' + currentClinicalId + '/clinical', entry).catch(() => {});
+  // Save to the server so every device sees the same notes.
+  // Only fall back to this device's localStorage if the API call fails
+  // (e.g. offline), so notes aren't silently stranded on one device.
+  try {
+    await API.post('/patients/' + currentClinicalId + '/clinical', entry);
+    Toast.success('Clinical notes saved for ' + currentClinicalName);
+  } catch (e) {
+    let stored = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+    stored.unshift(entry);
+    localStorage.setItem('clinical_' + currentClinicalId, JSON.stringify(stored));
+    Toast.warning('Could not reach server — notes saved on this device only.');
+  }
 
-  let stored = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
-  stored.unshift(entry);
-  localStorage.setItem('clinical_' + currentClinicalId, JSON.stringify(stored));
-
-  Toast.success('Clinical notes saved for ' + currentClinicalName);
   ['complaints','lab','diagnosis','treatment','detention'].forEach(k => {
     document.getElementById('input-' + k).value = '';
   });
@@ -631,16 +636,17 @@ function saveClinical() {
 }
 
 async function loadClinicalHistory(id) {
-  // FIX: this used to read only from localStorage, which is why notes
-  // saved on one device never showed up on another. Now it fetches the
-  // shared copy from the server first, and merges in anything still only
-  // saved locally on this device (e.g. saved while offline).
+  // Fetch the shared server copy first so all devices stay in sync;
+  // merge in any notes still only saved locally on this device.
   let records = [];
   try {
     records = await API.get('/patients/' + id + '/clinical');
-  } catch (e) {}
+  } catch (e) {
+    // API unreachable — we'll fall back to whatever is local below.
+  }
   const local = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
-  records = [...records, ...local];
+  records = [...records, ...local].sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+
   const el = document.getElementById('clinical-history');
   if (!records.length) { el.innerHTML = ''; return; }
 
@@ -648,11 +654,11 @@ async function loadClinicalHistory(id) {
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:10px">
       Previous Entries (${records.length})
     </div>
-    ${records.map((r, i) => `
+    ${records.map((r) => `
       <div style="border:1.5px solid var(--brown-pale);border-radius:8px;padding:14px;margin-bottom:10px;background:#fdfaf7">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <strong style="font-size:13px">Entry — ${new Date(r.savedAt).toLocaleString('en-GB')}</strong>
-          <button class="btn btn-sm btn-danger" onclick="deleteClinicalEntry('${id}',${i})"><i class="fa-solid fa-trash"></i></button>
+          <strong style="font-size:13px">Entry — ${new Date(r.savedAt).toLocaleString('en-GB')}${r._id ? '' : ' <span style="font-weight:400;color:var(--text-light)">(saved on this device only)</span>'}</strong>
+          ${r._id ? '' : `<button class="btn btn-sm btn-danger" onclick="deleteClinicalEntry('${id}',${r.id})"><i class="fa-solid fa-trash"></i></button>`}
         </div>
         ${r.complaints ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Complaints</div><div style="font-size:13px;white-space:pre-wrap">${r.complaints}</div></div>` : ''}
         ${r.lab ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Lab Investigations</div><div style="font-size:13px;white-space:pre-wrap">${r.lab}</div></div>` : ''}
@@ -662,17 +668,22 @@ async function loadClinicalHistory(id) {
       </div>`).join('')}`;
 }
 
-function deleteClinicalEntry(id, index) {
+function deleteClinicalEntry(id, entryId) {
+  // Only entries still stranded in this device's localStorage (never
+  // reached the server) can be removed here.
   if (!confirm('Delete this clinical entry?')) return;
   let stored = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
-  stored.splice(index, 1);
+  stored = stored.filter(r => r.id !== entryId);
   localStorage.setItem('clinical_' + id, JSON.stringify(stored));
   loadClinicalHistory(id);
   Toast.success('Entry deleted');
 }
 
-function printClinical() {
-  const records = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+async function printClinical() {
+  let records = [];
+  try { records = await API.get('/patients/' + currentClinicalId + '/clinical'); } catch (e) {}
+  const local = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
+  records = [...records, ...local].sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
   const latest = records[0];
   if (!latest) { Toast.warning('No saved notes to print.'); return; }
   const section = (label, val) => val ? `<div class="print-section-title">${label}</div><p style="font-size:13px;white-space:pre-wrap;margin-bottom:10px">${val}</p>` : '';
