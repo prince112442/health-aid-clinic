@@ -630,8 +630,17 @@ function saveClinical() {
   loadClinicalHistory(currentClinicalId);
 }
 
-function loadClinicalHistory(id) {
-  const records = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
+async function loadClinicalHistory(id) {
+  // FIX: this used to read only from localStorage, which is why notes
+  // saved on one device never showed up on another. Now it fetches the
+  // shared copy from the server first, and merges in anything still only
+  // saved locally on this device (e.g. saved while offline).
+  let records = [];
+  try {
+    records = await API.get('/patients/' + id + '/clinical');
+  } catch (e) {}
+  const local = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
+  records = [...records, ...local];
   const el = document.getElementById('clinical-history');
   if (!records.length) { el.innerHTML = ''; return; }
 
