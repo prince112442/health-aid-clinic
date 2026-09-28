@@ -8,6 +8,9 @@
   <style>
     .print-area { display: none; }
     @media print {
+      /* Print ONLY the print-area: hide the whole page (patient list, sidebar, modals) */
+      .app-layout, .modal-overlay, #toast-container { display: none !important; }
+      html, body { background: #fff !important; margin: 0; padding: 0; }
       .print-area { display: block; padding: 30px; font-family: 'DM Sans', sans-serif; color: #222; }
       .print-header { display:flex; align-items:center; gap:16px; border-bottom: 3px solid var(--brown-mid, #6b4226); padding-bottom: 16px; margin-bottom: 22px; }
       .print-header .print-logo { font-size: 34px; color: var(--brown-mid, #6b4226); }
@@ -350,6 +353,7 @@ function printRow(l, v) {
 
 let currentVitalsPatientId = null;
 let currentVitalsPatientName = null;
+let vitalsFormTemplate = null; // pristine copy of the "Add Vitals" form
 
 function toggleVitalsMenu(e, id, name) {
   e.stopPropagation();
@@ -364,77 +368,106 @@ document.addEventListener('click', () => {
   document.querySelectorAll('[id^="vmenu-"]').forEach(m => m.style.display = 'none');
 });
 
+function vEsc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function getVitalsBody() { return document.querySelector('#vitals-modal .modal-body'); }
+
+// Keep a clean copy of the form so it can be restored after the history table replaces it.
+function captureVitalsTemplate() {
+  if (vitalsFormTemplate === null) vitalsFormTemplate = getVitalsBody().innerHTML;
+}
+
 function openVitals(id, name) {
+  captureVitalsTemplate();
   currentVitalsPatientId = id;
   currentVitalsPatientName = name;
+  getVitalsBody().innerHTML = vitalsFormTemplate;   // fresh, empty form every time
+  document.getElementById('vitals-save-btn').style.display = '';
   document.getElementById('vitals-modal-title').textContent = 'Add Vitals — ' + name;
-  document.getElementById('vitals-form').reset();
   Modal.open('vitals-modal');
+}
+
+// Push any readings that were stranded in this device's localStorage up to the server.
+async function syncLocalVitals(id) {
+  const key = 'vitals_' + id;
+  const local = JSON.parse(localStorage.getItem(key) || '[]');
+  if (!local.length) return;
+  const remaining = [];
+  for (const r of local) {
+    try {
+      const { localId, patientId, ...reading } = r;
+      await API.post('/patients/' + id + '/vitals', reading);
+    } catch (e) {
+      remaining.push(r);   // keep it locally until the server accepts it
+    }
+  }
+  localStorage.setItem(key, JSON.stringify(remaining));
 }
 
 async function saveVitals() {
   const form = document.getElementById('vitals-form');
+  if (!form) return;
   if (!form.checkValidity()) { form.reportValidity(); return; }
   const data = getFormData(form);
-  data.patientId = currentVitalsPatientId;
   data.recordedAt = new Date().toISOString();
+  const id = currentVitalsPatientId;
+
+  // Save to the server so every device sees the same vitals.
+  // Only fall back to this device's localStorage if the API call fails.
   try {
-    await API.post('/vitals', data);
+    await API.post('/patients/' + id + '/vitals', data);
     Toast.success('Vitals saved for ' + currentVitalsPatientName);
-    Modal.close('vitals-modal');
-  } catch(e) {
-    // Store locally if API not available
-    let stored = JSON.parse(localStorage.getItem('vitals_' + currentVitalsPatientId) || '[]');
-    stored.unshift({ ...data, recordedAt: new Date().toISOString() });
-    localStorage.setItem('vitals_' + currentVitalsPatientId, JSON.stringify(stored));
-    Toast.success('Vitals saved locally for ' + currentVitalsPatientName);
-    Modal.close('vitals-modal');
+    syncLocalVitals(id);   // also rescue any older device-only readings
+  } catch (e) {
+    let stored = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
+    stored.unshift({ ...data, localId: Date.now() });
+    localStorage.setItem('vitals_' + id, JSON.stringify(stored));
+    Toast.warning('Could not reach server — vitals saved on this device only.');
   }
+  Modal.close('vitals-modal');
 }
 
 async function viewVitals(id, name) {
+  captureVitalsTemplate();
+  await syncLocalVitals(id);
+
   let records = [];
   try {
-    records = await API.get('/vitals/' + id);
-  } catch(e) {
-    records = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
+    records = await API.get('/patients/' + id + '/vitals');
+  } catch (e) {
+    // API unreachable — fall back to whatever is stored locally below.
   }
-  const local = JSON.parse(localStorage.getItem('vitals_' + id) || '[]');
-  records = [...records, ...local];
+  const local = JSON.parse(localStorage.getItem('vitals_' + id) || '[]').map(r => ({ ...r, _local: true }));
+  records = [...records, ...local].sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
 
   if (!records.length) {
     Toast.warning('No vitals recorded for ' + name);
     return;
   }
+  currentVitalsPatientId = id;
+  currentVitalsPatientName = name;
   document.getElementById('vitals-modal-title').textContent = 'Vitals History — ' + name;
-  const form = document.getElementById('vitals-form');
-  form.style.display = 'none';
-  // Show table
-  const body = document.querySelector('#vitals-modal .modal-body');
-  body.innerHTML = `<div class="table-wrap"><table>
+  document.getElementById('vitals-save-btn').style.display = 'none';
+  getVitalsBody().innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Date</th><th>Temp (°C)</th><th>BP</th><th>Pulse</th><th>RR</th><th>O₂ Sat%</th><th>Weight</th><th>Glucose</th><th>Notes</th></tr></thead>
     <tbody>${records.map(r => `<tr>
-      <td>${new Date(r.recordedAt).toLocaleString('en-GB')}</td>
-      <td>${r.temperature || '—'}</td>
-      <td>${r.bloodPressure || '—'}</td>
-      <td>${r.pulseRate || '—'}</td>
-      <td>${r.respiratoryRate || '—'}</td>
-      <td>${r.oxygenSaturation || '—'}</td>
+      <td>${new Date(r.recordedAt).toLocaleString('en-GB')}${r._local ? '<div style="font-size:11px;color:var(--text-light)">(this device only)</div>' : ''}</td>
+      <td>${r.temperature ?? '—'}</td>
+      <td>${vEsc(r.bloodPressure) || '—'}</td>
+      <td>${r.pulseRate ?? '—'}</td>
+      <td>${r.respiratoryRate ?? '—'}</td>
+      <td>${r.oxygenSaturation ?? '—'}</td>
       <td>${r.weight ? r.weight + ' kg' : '—'}</td>
-      <td>${r.bloodGlucose || '—'}</td>
-      <td>${r.vitalsNotes || '—'}</td>
+      <td>${r.bloodGlucose ?? '—'}</td>
+      <td>${vEsc(r.vitalsNotes) || '—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>
   <div style="margin-top:14px;text-align:right">
-    <button class="btn btn-primary btn-sm" onclick="resetVitalsModal('${id}','${name}')"><i class="fa-solid fa-plus"></i> Add New Vitals</button>
+    <button class="btn btn-primary btn-sm" onclick="openVitals(currentVitalsPatientId, currentVitalsPatientName)"><i class="fa-solid fa-plus"></i> Add New Vitals</button>
   </div>`;
   Modal.open('vitals-modal');
-}
-
-function resetVitalsModal(id, name) {
-  const body = document.querySelector('#vitals-modal .modal-body');
-  body.innerHTML = '<form id="vitals-form"><div class="form-grid"><div class="form-group"><label class="form-label">Temperature (°C) <span class="req">*</span></label><input type="number" name="temperature" class="form-control" step="0.1" min="30" max="45" placeholder="e.g. 36.6" required></div><div class="form-group"><label class="form-label">Blood Pressure (mmHg) <span class="req">*</span></label><input type="text" name="bloodPressure" class="form-control" placeholder="e.g. 120/80" required></div><div class="form-group"><label class="form-label">Pulse Rate (bpm) <span class="req">*</span></label><input type="number" name="pulseRate" class="form-control" min="30" max="250" placeholder="e.g. 72" required></div><div class="form-group"><label class="form-label">Respiratory Rate (breaths/min)</label><input type="number" name="respiratoryRate" class="form-control" min="5" max="60" placeholder="e.g. 16"></div><div class="form-group"><label class="form-label">Oxygen Saturation (%)</label><input type="number" name="oxygenSaturation" class="form-control" step="0.1" min="50" max="100" placeholder="e.g. 98"></div><div class="form-group"><label class="form-label">Weight (kg)</label><input type="number" name="weight" class="form-control" step="0.1" min="0" max="500" placeholder="e.g. 70"></div><div class="form-group"><label class="form-label">Height (cm)</label><input type="number" name="height" class="form-control" step="0.1" min="0" max="300" placeholder="e.g. 170"></div><div class="form-group"><label class="form-label">Blood Glucose (mmol/L)</label><input type="number" name="bloodGlucose" class="form-control" step="0.1" min="0" max="50" placeholder="e.g. 5.4"></div><div class="form-group col-span-2"><label class="form-label">Notes</label><textarea name="vitalsNotes" class="form-control" rows="3" placeholder="Additional observations..."></textarea></div></div></form>';
-  openVitals(id, name);
 }
 
 document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; loadPatients(1); });
@@ -492,7 +525,7 @@ loadPatients();
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('vitals-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveVitals()"><i class="fa-solid fa-floppy-disk"></i> Save Vitals</button>
+      <button class="btn btn-primary" id="vitals-save-btn" onclick="saveVitals()"><i class="fa-solid fa-floppy-disk"></i> Save Vitals</button>
     </div>
   </div>
 </div>

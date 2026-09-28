@@ -59,8 +59,6 @@ router.delete('/:id', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-module.exports = router;
-
 // POST /api/patients/:id/clinical - Save clinical notes (optional, falls back to localStorage on frontend)
 router.post('/:id/clinical', protect, async (req, res) => {
   try {
@@ -82,3 +80,40 @@ router.get('/:id/clinical', protect, async (req, res) => {
     res.json(patient.clinicalNotes || []);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
+
+// POST /api/patients/:id/vitals - Save a vitals reading for a patient
+router.post('/:id/vitals', protect, async (req, res) => {
+  try {
+    const fields = ['temperature', 'bloodPressure', 'pulseRate', 'respiratoryRate',
+                    'oxygenSaturation', 'weight', 'height', 'bloodGlucose', 'vitalsNotes'];
+    const reading = {};
+    fields.forEach(f => {
+      const v = req.body[f];
+      if (v !== undefined && v !== null && v !== '') reading[f] = v;
+    });
+    const when = new Date(req.body.recordedAt);
+    reading.recordedAt = isNaN(when.getTime()) ? new Date() : when;
+    reading.recordedBy = req.user._id;
+
+    const patient = await Patient.findByIdAndUpdate(
+      req.params.id,
+      { $push: { vitals: reading } },
+      { new: true, runValidators: true }
+    );
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    res.status(201).json({ message: 'Vitals saved' });
+  } catch (err) { res.status(400).json({ message: err.message }); }
+});
+
+// GET /api/patients/:id/vitals - Get vitals history (newest first)
+router.get('/:id/vitals', protect, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id).select('vitals');
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    const vitals = (patient.vitals || []).slice()
+      .sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+    res.json(vitals);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+module.exports = router;

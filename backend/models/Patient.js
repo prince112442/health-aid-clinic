@@ -23,6 +23,19 @@ const patientSchema = new mongoose.Schema({
     savedAt: { type: Date, default: Date.now },
     savedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }],
+  vitals: [{
+    temperature: { type: Number },
+    bloodPressure: { type: String, default: '' },
+    pulseRate: { type: Number },
+    respiratoryRate: { type: Number },
+    oxygenSaturation: { type: Number },
+    weight: { type: Number },
+    height: { type: Number },
+    bloodGlucose: { type: Number },
+    vitalsNotes: { type: String, default: '' },
+    recordedAt: { type: Date, default: Date.now },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
   registeredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   active: { type: Boolean, default: true }
 }, { timestamps: true });
