@@ -6,25 +6,6 @@
   <title>Patients — Health-Aid Clinic</title>
   <link rel="stylesheet" href="/css/style.css">
   <style>
-    .print-area { display: none; }
-    @media print {
-      /* Print ONLY the print-area: hide the whole page (patient list, sidebar, modals) */
-      .app-layout, .modal-overlay, #toast-container { display: none !important; }
-      html, body { background: #fff !important; margin: 0; padding: 0; }
-      .print-area { display: block; padding: 30px; font-family: 'DM Sans', sans-serif; color: #222; }
-      .print-header { display:flex; align-items:center; gap:16px; border-bottom: 3px solid var(--brown-mid, #6b4226); padding-bottom: 16px; margin-bottom: 22px; }
-      .print-header .print-logo { font-size: 34px; color: var(--brown-mid, #6b4226); }
-      .print-header h1 { font-size: 20px; margin-bottom: 2px; }
-      .print-header p { font-size: 12px; color: #666; }
-      .print-header .print-meta { margin-left: auto; text-align: right; font-size: 11px; color: #666; }
-      .print-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--brown-mid, #6b4226); border-bottom: 1px solid #ddd; padding-bottom: 4px; margin: 18px 0 10px; }
-      .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
-      .print-row { margin-bottom: 4px; }
-      .print-row .label { display:block; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #888; }
-      .print-row .value { font-size: 13px; font-weight: 500; }
-      .print-footer { margin-top: 40px; display:flex; justify-content: space-between; font-size: 11px; color: #666; }
-      .print-footer .sign-line { border-top: 1px solid #999; width: 200px; padding-top: 4px; text-align:center; }
-    }
     .view-section { margin-bottom: 20px; }
     .view-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--brown-mid); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1.5px solid var(--brown-pale); display:flex; align-items:center; gap:8px; }
   </style>
@@ -159,9 +140,6 @@
     </div>
   </div>
 </div>
-
-<!-- Print Area -->
-<div class="print-area" id="print-area"></div>
 
 <script src="/js/sidebar.js"></script>
 <script src="/js/app.js"></script>
@@ -303,53 +281,64 @@ function field(label, value, full = false) {
   </div>`;
 }
 
+// Print a document in its own hidden frame, so ONLY this content reaches the printer
+// (nothing from the patient list / sidebar / other patients can leak in).
+function printDocument(title, bodyHtml) {
+  const old = document.getElementById('print-frame');
+  if (old) old.remove();
+  const f = document.createElement('iframe');
+  f.id = 'print-frame';
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const doc = f.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${vEsc(title)}</title>
+  <style>
+    @page { margin: 16mm; }
+    body { font-family: 'DM Sans', Arial, sans-serif; color: #222; margin: 0; }
+    .ph { display:flex; align-items:center; gap:16px; border-bottom: 3px solid #6b4226; padding-bottom: 14px; margin-bottom: 20px; }
+    .ph h1 { font-size: 20px; margin: 0 0 2px; letter-spacing: .5px; }
+    .ph p { font-size: 12px; color: #666; margin: 0; }
+    .ph .meta { margin-left: auto; text-align: right; font-size: 11px; color: #666; line-height: 1.6; }
+    .st { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b4226; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin: 18px 0 10px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+    .row .label { display:block; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #888; }
+    .row .value { font-size: 13px; font-weight: 500; }
+    .txt { font-size: 13px; white-space: pre-wrap; margin: 0 0 10px; line-height: 1.5; }
+    .foot { margin-top: 48px; display:flex; justify-content: space-between; font-size: 11px; color: #666; }
+    .sign { border-top: 1px solid #999; width: 200px; padding-top: 4px; text-align:center; }
+  </style></head><body>${bodyHtml}</body></html>`);
+  doc.close();
+  setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); }, 300);
+}
+
 function printPatient() {
   if (!viewData) return;
   const p = viewData;
-  document.getElementById('print-area').innerHTML = `
-    <div class="print-header">
-      <div class="print-logo"><i class="fa-solid fa-hospital"></i></div>
-      <div>
-        <h1>HEALTH-AID CLINIC</h1>
-        <p>Patient Information Record</p>
-      </div>
-      <div class="print-meta">
-        <div>Patient ID: <strong>${p.patientId}</strong></div>
-        <div>Printed: ${new Date().toLocaleString('en-GB')}</div>
-      </div>
+  const e = vEsc;
+  const row = (l, v) => `<div class="row"><span class="label">${l}</span><span class="value">${e(v)}</span></div>`;
+  printDocument('Patient Record — ' + p.name, `
+    <div class="ph">
+      <div><h1>HEALTH-AID CLINIC</h1><p>Patient Information Record</p></div>
+      <div class="meta"><div>Patient ID: <strong>${e(p.patientId)}</strong></div><div>Printed: ${new Date().toLocaleString('en-GB')}</div></div>
     </div>
-
-    <div class="print-section-title">Personal Information</div>
-    <div class="print-grid">
-      ${printRow('Full Name', p.name)}${printRow('Registered', Fmt.date(p.createdAt))}
-      ${printRow('Age', p.age + ' years')}${printRow('Sex', p.sex)}
-      ${printRow('Blood Group', p.bloodGroup || '—')}
+    <div class="st">Personal Information</div>
+    <div class="grid">
+      ${row('Full Name', p.name)}${row('Registered', Fmt.date(p.createdAt))}
+      ${row('Age', p.age + ' years')}${row('Sex', p.sex)}
+      ${row('Blood Group', p.bloodGroup || '—')}
     </div>
-
-    <div class="print-section-title">Contact &amp; Emergency</div>
-    <div class="print-grid">
-      ${printRow('Contact', p.contact)}${printRow('Email', p.email || '—')}
-      ${printRow('Address', p.address || '—')}
-      ${printRow('Emergency Contact', p.emergencyContact || '—')}${printRow('Emergency Phone', p.emergencyPhone || '—')}
+    <div class="st">Contact &amp; Emergency</div>
+    <div class="grid">
+      ${row('Contact', p.contact)}${row('Email', p.email || '—')}
+      ${row('Address', p.address || '—')}
+      ${row('Emergency Contact', p.emergencyContact || '—')}${row('Emergency Phone', p.emergencyPhone || '—')}
     </div>
-
-    <div class="print-section-title">Medical Information</div>
-    <div class="print-grid">
-      ${printRow('Allergies', p.allergies || 'None')}
-    </div>
-    <div style="margin-top:10px"><span class="print-row label">Medical History</span><div class="print-row value" style="white-space:pre-wrap">${p.medicalHistory || 'None'}</div></div>
-
-    <div class="print-footer">
-      <div class="sign-line">Attending Staff Signature</div>
-      <div class="sign-line">Patient / Guardian Signature</div>
-    </div>`;
-  window.print();
+    <div class="st">Medical Information</div>
+    <div class="grid">${row('Allergies', p.allergies || 'None')}</div>
+    <div class="row" style="margin-top:10px"><span class="label">Medical History</span><div class="value" style="white-space:pre-wrap">${e(p.medicalHistory || 'None')}</div></div>
+    <div class="foot"><div class="sign">Attending Staff Signature</div><div class="sign">Patient / Guardian Signature</div></div>`);
 }
-
-function printRow(l, v) {
-  return `<div class="print-row"><span class="label">${l}</span><span class="value">${v}</span></div>`;
-}
-
 
 let currentVitalsPatientId = null;
 let currentVitalsPatientName = null;
@@ -602,7 +591,6 @@ loadPatients();
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="Modal.close('clinical-modal')">Close</button>
-      <button class="btn btn-secondary" onclick="printClinical()"><i class="fa-solid fa-print"></i> Print</button>
       <button class="btn btn-primary" onclick="saveClinical()"><i class="fa-solid fa-floppy-disk"></i> Save Notes</button>
     </div>
   </div>
@@ -668,6 +656,8 @@ async function saveClinical() {
   loadClinicalHistory(currentClinicalId);
 }
 
+let clinicalRecords = [];   // notes currently listed for the open patient (newest first)
+
 async function loadClinicalHistory(id) {
   // Fetch the shared server copy first so all devices stay in sync;
   // merge in any notes still only saved locally on this device.
@@ -679,25 +669,33 @@ async function loadClinicalHistory(id) {
   }
   const local = JSON.parse(localStorage.getItem('clinical_' + id) || '[]');
   records = [...records, ...local].sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+  clinicalRecords = records;
 
   const el = document.getElementById('clinical-history');
   if (!records.length) { el.innerHTML = ''; return; }
 
+  const block = (label, val) => val
+    ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">${label}</div><div style="font-size:13px;white-space:pre-wrap">${vEsc(val)}</div></div>`
+    : '';
+
   el.innerHTML = `
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:10px">
-      Previous Entries (${records.length})
+      Clinical Notes (${records.length})
     </div>
-    ${records.map((r) => `
+    ${records.map((r, i) => `
       <div style="border:1.5px solid var(--brown-pale);border-radius:8px;padding:14px;margin-bottom:10px;background:#fdfaf7">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <strong style="font-size:13px">Entry — ${new Date(r.savedAt).toLocaleString('en-GB')}${r._id ? '' : ' <span style="font-weight:400;color:var(--text-light)">(saved on this device only)</span>'}</strong>
-          ${r._id ? '' : `<button class="btn btn-sm btn-danger" onclick="deleteClinicalEntry('${id}',${r.id})"><i class="fa-solid fa-trash"></i></button>`}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">
+          <strong style="font-size:13px">Clinical Note — ${new Date(r.savedAt).toLocaleString('en-GB')}${r._id ? '' : ' <span style="font-weight:400;color:var(--text-light)">(saved on this device only)</span>'}</strong>
+          <span style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-sm btn-secondary" onclick="printClinicalNote(${i})" title="Print this clinical note"><i class="fa-solid fa-print"></i> Print</button>
+            ${r._id ? '' : `<button class="btn btn-sm btn-danger" onclick="deleteClinicalEntry('${id}',${r.id})"><i class="fa-solid fa-trash"></i></button>`}
+          </span>
         </div>
-        ${r.complaints ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Complaints</div><div style="font-size:13px;white-space:pre-wrap">${r.complaints}</div></div>` : ''}
-        ${r.lab ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Lab Investigations</div><div style="font-size:13px;white-space:pre-wrap">${r.lab}</div></div>` : ''}
-        ${r.diagnosis ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Diagnosis</div><div style="font-size:13px;white-space:pre-wrap">${r.diagnosis}</div></div>` : ''}
-        ${r.treatment ? `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Treatment / Prescription</div><div style="font-size:13px;white-space:pre-wrap">${r.treatment}</div></div>` : ''}
-        ${r.detention ? `<div><div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase">Detention / Admission</div><div style="font-size:13px;white-space:pre-wrap">${r.detention}</div></div>` : ''}
+        ${block('Complaints', r.complaints)}
+        ${block('Lab Investigations', r.lab)}
+        ${block('Diagnosis', r.diagnosis)}
+        ${block('Treatment / Prescription', r.treatment)}
+        ${block('Detention / Admission', r.detention)}
       </div>`).join('')}`;
 }
 
@@ -712,30 +710,36 @@ function deleteClinicalEntry(id, entryId) {
   Toast.success('Entry deleted');
 }
 
-async function printClinical() {
-  let records = [];
-  try { records = await API.get('/patients/' + currentClinicalId + '/clinical'); } catch (e) {}
-  const local = JSON.parse(localStorage.getItem('clinical_' + currentClinicalId) || '[]');
-  records = [...records, ...local].sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
-  const latest = records[0];
-  if (!latest) { Toast.warning('No saved notes to print.'); return; }
-  const section = (label, val) => val ? `<div class="print-section-title">${label}</div><p style="font-size:13px;white-space:pre-wrap;margin-bottom:10px">${val}</p>` : '';
-  document.getElementById('print-area').innerHTML = `
-    <div class="print-header">
-      <div class="print-logo"><i class="fa-solid fa-hospital"></i></div>
-      <div>
-        <h1>HEALTH-AID CLINIC</h1>
-        <p>Clinical Notes — ${currentClinicalName}</p>
-      </div>
-      <div class="print-meta">
+// Print ONE clinical note, for the ONE patient whose record is open.
+async function printClinicalNote(index) {
+  const note = clinicalRecords[index];
+  if (!note) { Toast.warning('Clinical note not found.'); return; }
+
+  // Look up this patient's basic details for the header (optional — falls back to name only).
+  let p = null;
+  try { p = await API.get('/patients/' + currentClinicalId); } catch (e) {}
+
+  const e = vEsc;
+  const section = (label, val) => val ? `<div class="st">${label}</div><p class="txt">${e(val)}</p>` : '';
+  const row = (l, v) => `<div class="row"><span class="label">${l}</span><span class="value">${e(v)}</span></div>`;
+  printDocument('Clinical Note — ' + currentClinicalName, `
+    <div class="ph">
+      <div><h1>HEALTH-AID CLINIC</h1><p>Clinical Note</p></div>
+      <div class="meta">
+        ${p ? `<div>Patient ID: <strong>${e(p.patientId)}</strong></div>` : ''}
+        <div>Note date: ${new Date(note.savedAt).toLocaleString('en-GB')}</div>
         <div>Printed: ${new Date().toLocaleString('en-GB')}</div>
       </div>
     </div>
-    ${section('Patient Complaints', latest.complaints)}
-    ${section('Lab Investigations', latest.lab)}
-    ${section('Diagnosis', latest.diagnosis)}
-    ${section('Treatment / Prescription', latest.treatment)}
-    ${section('Detention / Admission Notes', latest.detention)}`;
-  window.print();
+    <div class="grid">
+      ${row('Patient', currentClinicalName)}
+      ${p ? row('Age / Sex', p.age + ' yrs / ' + p.sex) : ''}
+    </div>
+    ${section('Patient Complaints', note.complaints)}
+    ${section('Lab Investigations', note.lab)}
+    ${section('Diagnosis', note.diagnosis)}
+    ${section('Treatment / Prescription', note.treatment)}
+    ${section('Detention / Admission Notes', note.detention)}
+    <div class="foot"><div class="sign">Attending Staff Signature</div></div>`);
 }
 </script>
