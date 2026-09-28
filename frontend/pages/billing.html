@@ -19,6 +19,21 @@
     @media print {
       .sidebar, .topbar, .toolbar, .btn, .modal-overlay { display:none!important; }
       .main-content { margin-left:0; }
+
+      /* When an invoice is open, print ONLY that invoice (not the bills list behind it) */
+      body.print-invoice .app-layout,
+      body.print-invoice #bill-modal { display:none!important; }
+      body.print-invoice #invoice-modal {
+        display:block!important; position:static; inset:auto;
+        background:none; padding:0; z-index:auto;
+      }
+      body.print-invoice #invoice-modal .modal {
+        max-width:none; max-height:none; overflow:visible;
+        box-shadow:none; border-radius:0; animation:none;
+      }
+      body.print-invoice #invoice-modal .modal-header,
+      body.print-invoice #invoice-modal .modal-footer { display:none!important; }
+      body.print-invoice #invoice-modal .modal-body { padding:0; }
     }
   </style>
 </head>
@@ -329,6 +344,14 @@ async function markPaid(id) {
     Toast.success('Marked as paid'); loadBills();
   } catch(e) { Toast.error(e.message); }
 }
+
+// Mark the page as "printing an invoice" only while the invoice modal is open
+window.addEventListener('beforeprint', () => {
+  if (document.getElementById('invoice-modal').classList.contains('open')) {
+    document.body.classList.add('print-invoice');
+  }
+});
+window.addEventListener('afterprint', () => document.body.classList.remove('print-invoice'));
 
 ['search-input','status-filter'].forEach(id => {
   document.getElementById(id)?.addEventListener('input', loadBills);
